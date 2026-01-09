@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  sortOrder Int      @default(0)
+  sites     Site[]
+  createdAt DateTime @default(now())
+}
+
+model Site {
+  id          String   @id @default(cuid())
+  title       String
+  url         String
+  description String?
+  icon        String?
+  visits      Int      @default(0)
+  
+  category    Category @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
