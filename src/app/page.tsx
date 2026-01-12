@@ -9,12 +9,15 @@ export default async function Home() {
   const categories = await prisma.category.findMany({
     include: {
       sites: {
-        orderBy: {
-          visits: 'desc'
-        }
+        orderBy: [
+          { visits: 'desc' }       // 仅按点击量排序
+        ]
       }
+    },
+    orderBy: {
+      sortOrder: 'asc'
     }
   });
 
-  return <ClientWrapper categories={categories} />;
+  return <ClientWrapper initialCategories={categories} />;
 }

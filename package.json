@@ -7,15 +7,20 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:admin": "prisma studio"
+    "db:admin": "prisma studio",
+    "weekly": "npx tsx scripts/draft-weekly.ts"
   },
   "dependencies": {
+    "@notionhq/client": "^2.2.15",
     "@supabase/supabase-js": "^2.90.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "lucide-react": "^0.562.0",
     "next": "16.1.1",
+    "openai": "^6.16.0",
     "react": "19.2.3",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "19.2.3",
     "tailwind-merge": "^3.4.0"
   },
