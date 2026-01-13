@@ -17,11 +17,14 @@ interface CategoryTitleProps {
   categories: { id: string; name: string }[];
   onEditComplete: (id: string, data: { name?: string; icon?: string }) => void;
   onAddSiteComplete?: (site: Site) => void;
+  onDeleteCategory?: (id: string) => void;
 }
 
-export function CategoryTitle({ category, categories, onEditComplete, onAddSiteComplete }: CategoryTitleProps) {
+export function CategoryTitle({ category, categories, onEditComplete, onAddSiteComplete, onDeleteCategory }: CategoryTitleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingSite, setIsAddingSite] = useState(false);
+
+  // ... (existing helper functions: handleAddSite, IconComponent)
 
   const handleAddSite = async (id: string | null, data: Partial<Site>) => {
     try {
@@ -51,12 +54,13 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
     if (!icon) return null;
 
     const Icon = icons[icon as keyof typeof icons];
-    return Icon ? <Icon size={20} /> : <div className="w-5 h-5 text-gray-400">?</div>;
+    return Icon ? <Icon size={16} /> : <div className="w-4 h-4 text-gray-400">?</div>;
   };
 
   return (
     <>
       <div className="flex items-center gap-3 mb-3">
+        {/* ... (existing rendering logic) */}
         <div className="flex items-center gap-3">
           {/* 图标 */}
           {category.icon && (
@@ -106,6 +110,7 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
         isOpen={isEditing}
         onClose={() => setIsEditing(false)}
         onSave={onEditComplete}
+        onDelete={onDeleteCategory}
       />
 
       {/* 添加站点模态窗口 */}

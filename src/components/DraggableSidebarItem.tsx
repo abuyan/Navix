@@ -108,7 +108,7 @@ export function DraggableSidebarItem({
             }}
         >
             <IconComponent
-                className="w-5 h-5 transition-colors flex-shrink-0"
+                className="w-4 h-4 transition-colors flex-shrink-0"
                 style={{
                     color: isActive ? 'var(--color-accent)' : 'var(--color-text-tertiary)'
                 }}

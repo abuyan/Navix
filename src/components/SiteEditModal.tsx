@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Site } from '@prisma/client';
-import { X, Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Trash2, Sparkles, Loader2, Check } from 'lucide-react';
 
 interface SiteEditModalProps {
     site?: Site | null;
@@ -21,6 +21,7 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
     const [icon, setIcon] = useState(site?.icon || '');
     const [categoryId, setCategoryId] = useState(site?.categoryId || '');
     const [isSaving, setIsSaving] = useState(false);
+    const [isExtracting, setIsExtracting] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
@@ -65,6 +66,42 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
             };
         }
     }, [isOpen, site, onClose]);
+
+    // AI 智能提取
+    const handleAIExtract = async () => {
+        if (!url.trim()) {
+            alert('请先输入网址');
+            return;
+        }
+
+        setIsExtracting(true);
+        try {
+            const response = await fetch('/api/ai/extract', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url.trim() })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || '提取失败');
+            }
+
+            // 自动填充表单
+            if (data.url) setUrl(data.url);
+            if (data.title) setTitle(data.title);
+            if (data.description) setDescription(data.description);
+            // tags 暂时不处理，后续可以显示在 UI 上
+
+        } catch (error) {
+            console.error('AI 提取失败:', error);
+            alert(`智能提取失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        } finally {
+            setIsExtracting(false);
+        }
+    };
+
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -157,7 +194,7 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                             </label>
                             <div
                                 onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                                className="w-full px-3 py-2 rounded-lg border cursor-pointer flex items-center justify-between transition-colors"
+                                className="w-full px-3 h-9 rounded-lg border cursor-pointer flex items-center justify-between transition-colors"
                                 style={{
                                     backgroundColor: 'var(--color-bg-tertiary)',
                                     borderColor: 'var(--color-border)',
@@ -211,41 +248,20 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                         </div>
                     )}
 
-                    {/* 名称 & 网址 */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label
-                                className="block text-sm font-medium mb-2"
-                                style={{ color: 'var(--color-text-secondary)' }}
-                            >
-                                站点名称 *
-                            </label>
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg border outline-none focus:border-[var(--color-accent)] transition-colors"
-                                style={{
-                                    backgroundColor: 'var(--color-bg-tertiary)',
-                                    borderColor: 'var(--color-border)',
-                                    color: 'var(--color-text-primary)'
-                                }}
-                                placeholder="请输入站点名称"
-                            />
-                        </div>
-
-                        <div>
-                            <label
-                                className="block text-sm font-medium mb-2"
-                                style={{ color: 'var(--color-text-secondary)' }}
-                            >
-                                网址 *
-                            </label>
+                    {/* 网址 + AI 按钮 */}
+                    <div>
+                        <label
+                            className="block text-sm font-medium mb-2"
+                            style={{ color: 'var(--color-text-secondary)' }}
+                        >
+                            网址 *
+                        </label>
+                        <div className="flex gap-2">
                             <input
                                 type="url"
                                 value={url}
                                 onChange={(e) => setUrl(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg border outline-none focus:border-[var(--color-accent)] transition-colors"
+                                className="flex-1 px-3 h-9 rounded-lg border outline-none focus:border-[var(--color-accent)] transition-colors"
                                 style={{
                                     backgroundColor: 'var(--color-bg-tertiary)',
                                     borderColor: 'var(--color-border)',
@@ -253,7 +269,50 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                                 }}
                                 placeholder="https://example.com"
                             />
+                            <button
+                                type="button"
+                                onClick={handleAIExtract}
+                                disabled={isExtracting || !url.trim()}
+                                className="group flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all border disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
+                                style={{
+                                    backgroundColor: 'var(--color-action-bg)',
+                                    borderColor: 'var(--color-border)',
+                                    color: 'var(--color-text-primary)'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-action-hover)'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-action-bg)'}
+                                title="AI 智能填充标题和描述"
+                            >
+                                {isExtracting ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                    <Sparkles size={16} />
+                                )}
+                                <span className="text-sm">{isExtracting ? '分析中' : 'AI 填充'}</span>
+                            </button>
                         </div>
+                    </div>
+
+                    {/* 站点名称 */}
+                    <div>
+                        <label
+                            className="block text-sm font-medium mb-2"
+                            style={{ color: 'var(--color-text-secondary)' }}
+                        >
+                            站点名称 *
+                        </label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="w-full px-3 h-9 rounded-lg border outline-none focus:border-[var(--color-accent)] transition-colors"
+                            style={{
+                                backgroundColor: 'var(--color-bg-tertiary)',
+                                borderColor: 'var(--color-border)',
+                                color: 'var(--color-text-primary)'
+                            }}
+                            placeholder="请输入站点名称"
+                        />
                     </div>
 
                     {/* 说明 */}
@@ -293,7 +352,7 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                                     type="url"
                                     value={icon}
                                     onChange={(e) => setIcon(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg border outline-none focus:border-[var(--color-accent)] transition-colors text-sm"
+                                    className="w-full px-3 h-9 pr-9 rounded-lg border outline-none focus:border-[var(--color-accent)] transition-colors text-sm"
                                     style={{
                                         backgroundColor: 'var(--color-bg-tertiary)',
                                         borderColor: 'var(--color-border)',
@@ -304,7 +363,10 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                                 {icon && (
                                     <button
                                         onClick={() => setIcon('')}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 hover:text-red-600 p-1"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 transition-colors"
+                                        style={{ color: 'var(--color-text-tertiary)' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-text-secondary)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-text-tertiary)'}
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -313,7 +375,7 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
 
                             {/* 预览方块 */}
                             <div
-                                className="w-10 h-10 rounded-lg border flex items-center justify-center shrink-0 p-1.5 transition-all"
+                                className="w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 p-1.5 transition-all"
                                 style={{
                                     backgroundColor: 'var(--color-bg-tertiary)',
                                     borderColor: 'var(--color-border)'
@@ -343,15 +405,18 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                             />
                             <label
                                 htmlFor="icon-upload"
-                                className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg border cursor-pointer hover:bg-[var(--color-bg-primary)] transition-all bg-[var(--color-bg-tertiary)] shrink-0 group"
+                                className="flex items-center justify-center gap-2 px-3 h-9 rounded-lg border cursor-pointer transition-all shrink-0 hover:scale-[1.02] active:scale-[0.98]"
                                 style={{
+                                    backgroundColor: 'var(--color-action-bg)',
                                     borderColor: 'var(--color-border)',
-                                    color: 'var(--color-text-secondary)'
+                                    color: 'var(--color-text-primary)'
                                 }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-action-hover)'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-action-bg)'}
                                 title="从本地上传图标"
                             >
-                                <Upload size={18} className="group-hover:text-[var(--color-accent)] transition-colors" />
-                                <span className="text-xs font-medium">上传</span>
+                                <Upload size={16} />
+                                <span className="text-sm font-medium">上传</span>
                             </label>
                         </div>
                     </div>
@@ -364,21 +429,30 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                 >
                     <button
                         onClick={onClose}
-                        className="px-6 py-2 rounded-lg font-medium transition-colors hover:bg-[var(--color-bg-tertiary)]"
-                        style={{ color: 'var(--color-text-secondary)' }}
+                        className="px-6 h-9 rounded-lg font-medium transition-all hover:bg-[var(--color-action-hover)] active:scale-95"
+                        style={{
+                            backgroundColor: 'var(--color-action-bg)',
+                            color: 'var(--color-text-secondary)'
+                        }}
                     >
                         取消
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="px-8 py-2 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="group flex items-center gap-2 px-6 h-9 rounded-lg font-medium transition-all border disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
                         style={{
-                            backgroundColor: 'var(--color-accent)',
-                            color: 'white'
+                            backgroundColor: 'var(--color-text-primary)',
+                            borderColor: 'var(--color-text-primary)',
+                            color: 'var(--color-bg-primary)'
                         }}
                     >
-                        {isSaving ? '保存中...' : '保存'}
+                        {isSaving ? (
+                            <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                            <Check size={16} />
+                        )}
+                        <span className="text-sm">{isSaving ? '保存中' : '保存'}</span>
                     </button>
                 </div>
             </div>

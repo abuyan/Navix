@@ -91,8 +91,11 @@ export function ConfirmModal({
                 <div className="flex items-center justify-end gap-2 p-4 pt-0">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:bg-[var(--color-bg-tertiary)]"
-                        style={{ color: 'var(--color-text-secondary)' }}
+                        className="px-4 h-9 rounded-lg text-sm font-medium transition-all hover:bg-[var(--color-action-hover)] active:scale-95"
+                        style={{
+                            backgroundColor: 'var(--color-action-bg)',
+                            color: 'var(--color-text-secondary)'
+                        }}
                     >
                         {cancelText}
                     </button>
@@ -101,11 +104,10 @@ export function ConfirmModal({
                             onConfirm();
                             onClose();
                         }}
-                        className="px-4 py-2 rounded-xl text-xs font-semibold transition-all transform active:scale-95"
+                        className="px-6 h-9 rounded-lg text-sm font-medium transition-all transform active:scale-95"
                         style={{
-                            backgroundColor: type === 'danger' ? '#ef4444' : 'var(--color-accent)',
-                            color: 'white',
-                            boxShadow: type === 'danger' ? '0 4px 12px rgba(239, 68, 68, 0.2)' : 'none'
+                            backgroundColor: 'var(--color-text-primary)',
+                            color: 'var(--color-bg-primary)'
                         }}
                     >
                         {confirmText}

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { icons, X } from 'lucide-react';
+import { icons, X, Check, Loader2 } from 'lucide-react';
 
 interface CategoryWithCount {
   id: string;
@@ -18,6 +18,8 @@ interface CategoryEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (id: string, data: { name: string; icon?: string }) => void;
+  onDelete?: (id: string) => void;
+  isCreate?: boolean;
 }
 
 const ICON_GRID = [
@@ -53,11 +55,13 @@ const ICON_GRID = [
   'Utensils', 'Coffee', 'Wine', 'GlassWater', 'Beef', 'Cake', 'IceCream', 'CookingPot', 'Gift', 'Umbrella', 'Sun', 'Moon', 'CloudRain', 'Snowflake', 'BaggageClaim', 'Bed', 'Binoculars'
 ];
 
-export function CategoryEditModal({ category, isOpen, onClose, onSave }: CategoryEditModalProps) {
+export function CategoryEditModal({ category, isOpen, onClose, onSave, onDelete, isCreate = false }: CategoryEditModalProps) {
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -68,10 +72,21 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave }: Categor
     if (isOpen) {
       setName(category?.name || '');
       setSelectedIcon(category?.icon || '');
+      setShowDeleteConfirm(false);
+    }
+  }, [isOpen, category]);
 
+  useEffect(() => {
+    if (isOpen) {
       // 键盘 ESC 关闭
       const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') onClose();
+        if (e.key === 'Escape') {
+          if (showDeleteConfirm) {
+            setShowDeleteConfirm(false);
+          } else {
+            onClose();
+          }
+        }
       };
       window.addEventListener('keydown', handleKeyDown);
 
@@ -85,7 +100,7 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave }: Categor
         document.documentElement.style.overflow = '';
       };
     }
-  }, [isOpen, category, onClose]);
+  }, [isOpen, onClose, showDeleteConfirm]);
 
   const IconComponent = ({ name, size = 20 }: { name: string; size?: number }) => {
     const Icon = icons[name as keyof typeof icons];
@@ -96,7 +111,22 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave }: Categor
   };
 
   const handleSave = async () => {
-    if (!name.trim() || !category) return;
+    if (!name.trim()) return;
+
+    // 在新建模式下,category 为 null,需要特殊处理
+    if (isCreate) {
+      setIsSaving(true);
+      try {
+        await onSave('', { name, icon: selectedIcon || undefined });
+        onClose();
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    // 编辑模式
+    if (!category) return;
 
     setIsSaving(true);
     try {
@@ -107,7 +137,28 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave }: Categor
     }
   };
 
-  if (!isOpen || !category || !mounted) return null;
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!category || !onDelete) return;
+
+    setIsDeleting(true);
+    setShowDeleteConfirm(false);
+    try {
+      await onDelete(category.id);
+      onClose();
+    } catch (error) {
+      console.error('Delete failed:', error);
+      alert('删除失败');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (!isOpen || !mounted) return null;
+  if (!isCreate && !category) return null;
 
   return createPortal(
     <div
@@ -131,10 +182,10 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave }: Categor
           }}
         >
           <h2
-            className="text-lg font-bold"
+            className="text-base font-bold"
             style={{ color: 'var(--color-text-primary)' }}
           >
-            编辑分类
+            {isCreate ? '新建分类' : '编辑分类'}
           </h2>
           <button
             onClick={onClose}
@@ -158,9 +209,9 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave }: Categor
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 transition-colors"
+              className="w-full px-4 h-9 rounded-lg border outline-none focus:border-[var(--color-accent)] transition-colors text-sm"
               style={{
-                backgroundColor: 'var(--color-bg-primary)',
+                backgroundColor: 'var(--color-bg-tertiary)',
                 border: '1px solid var(--color-border)',
                 color: 'var(--color-text-primary)'
               }}
@@ -215,8 +266,8 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave }: Categor
                   title={iconName}
                   style={{
                     backgroundColor: selectedIcon === iconName ? 'var(--color-accent-soft)' : 'transparent',
-                    color: selectedIcon === iconName ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-                    boxShadow: selectedIcon === iconName ? '0 0 0 2px var(--color-accent)' : 'none'
+                    color: selectedIcon === iconName ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                    boxShadow: selectedIcon === iconName ? '0 0 0 2px var(--color-text-primary)' : 'none'
                   }}
                 >
                   <IconComponent name={iconName} size={20} />
@@ -235,31 +286,108 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave }: Categor
 
         {/* 底部按钮 */}
         <div
-          className="flex items-center justify-end gap-3 px-6 py-4"
+          className="flex items-center justify-between px-6 py-4"
           style={{ borderTop: '1px solid var(--color-border)' }}
         >
-          <button
-            onClick={onClose}
-            disabled={isSaving}
-            className="px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 hover:bg-[var(--color-bg-tertiary)]"
-            style={{ color: 'var(--color-text-secondary)' }}
-          >
-            取消
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!name.trim() || isSaving}
-            className="px-8 py-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-            style={{
-              backgroundColor: 'var(--color-accent)',
-              color: 'white'
-            }}
-          >
-            {isSaving ? '保存中...' : '保存'}
-          </button>
+          {onDelete && !isCreate && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteClick();
+              }}
+              disabled={isDeleting || isSaving}
+              className="px-4 h-9 rounded-lg font-medium transition-colors hover:bg-[var(--color-action-hover)] disabled:opacity-50 text-sm"
+              style={{ color: 'var(--color-text-tertiary)' }}
+            >
+              {isDeleting ? '删除中...' : '删除分类'}
+            </button>
+          )}
+
+          <div className="flex items-center gap-3 ml-auto">
+            <button
+              onClick={onClose}
+              disabled={isDeleting || isSaving}
+              className="px-6 h-9 rounded-lg font-medium transition-all hover:bg-[var(--color-action-hover)] active:scale-95 text-sm"
+              style={{
+                backgroundColor: 'var(--color-action-bg)',
+                color: 'var(--color-text-secondary)'
+              }}
+            >
+              取消
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!name.trim() || isSaving || isDeleting}
+              className="group flex items-center gap-2 px-6 h-9 rounded-lg font-medium transition-all border disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                backgroundColor: 'var(--color-text-primary)',
+                borderColor: 'var(--color-text-primary)',
+                color: 'var(--color-bg-primary)'
+              }}
+            >
+              {isSaving ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Check size={16} />
+              )}
+              <span className="text-sm">{isSaving ? '保存中' : '保存'}</span>
+            </button>
+          </div>
         </div>
+
+        {/* 删除确认对话框 */}
+        {showDeleteConfirm && (
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center rounded-xl"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <div
+              className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm mx-4 shadow-2xl"
+              style={{
+                backgroundColor: 'var(--color-bg-secondary)',
+                border: '1px solid var(--color-border)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3
+                className="text-base font-bold mb-3"
+                style={{ color: 'var(--color-text-primary)' }}
+              >
+                确认删除
+              </h3>
+              <p
+                className="text-sm mb-6"
+                style={{ color: 'var(--color-text-secondary)' }}
+              >
+                确定要删除分类 "<span className="font-medium" style={{ color: 'var(--color-text-primary)' }}>{category?.name}</span>" 吗？
+                <br />
+                <span className="text-red-500">删除后无法恢复，且该分类下的所有站点也会被删除。</span>
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 rounded-lg font-medium transition-colors hover:bg-[var(--color-bg-tertiary)] text-sm"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="px-6 h-9 rounded-lg font-medium transition-all hover:scale-[1.02] active:scale-[0.98] text-sm"
+                  style={{
+                    backgroundColor: 'var(--color-text-primary)',
+                    color: 'var(--color-bg-primary)'
+                  }}
+                >
+                  确认删除
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>,
+    </div >,
     document.body
   );
 }

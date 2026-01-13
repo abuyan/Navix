@@ -4,6 +4,8 @@ import { Settings, ChevronDown, Upload, Search, ExternalLink } from 'lucide-reac
 import ThemeToggle from './ThemeToggle';
 import ImportModal from './ImportModal';
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 
 export type SearchResult = {
     id: string;
@@ -17,22 +19,20 @@ export type SearchResult = {
 type NavItem = {
     id: string;
     name: string;
-    href?: string;
+    href: string; // Made href required for new structure
     isActive?: boolean;
 };
 
 const defaultNavItems: NavItem[] = [
-    { id: 'tools', name: '工具导航', isActive: true },
-    { id: 'news', name: '新闻资讯' },
-    { id: 'ai', name: 'AI 导航' },
-    { id: 'fonts', name: '字体导航' },
-    { id: 'design', name: '设计导航' },
+    { id: 'home', name: 'Nav导航', href: '/' },
+    { id: 'weekly', name: '周刊', href: '/weekly' },
+    { id: 'my', name: '我的导航', href: '/my' },
 ];
 
 export default function TopNav({
     navItems = defaultNavItems,
-    activeNav,
-    onNavChange,
+    activeNav, // Keeping for backward compatibility but might not be used with new routing
+    onNavChange, // Keeping for backward compatibility
     sidebarCollapsed,
     searchResults = [],
     onResultSelect,
@@ -41,33 +41,68 @@ export default function TopNav({
     navItems?: NavItem[];
     activeNav?: string;
     onNavChange?: (id: string) => void;
-    sidebarCollapsed: boolean;
+    sidebarCollapsed?: boolean; // Made optional to be safe
     searchResults?: SearchResult[];
-    onResultSelect: (result: SearchResult) => void;
+    onResultSelect?: (result: SearchResult) => void; // Made optional
     onResultFocus?: (result: SearchResult) => void;
 }) {
+    const pathname = usePathname();
+    const router = useRouter();
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [importModalOpen, setImportModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [showResults, setShowResults] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
-    const searchRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const [searchExpanded, setSearchExpanded] = useState(false);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const searchRef = useRef<HTMLDivElement>(null); // Ref for the entire search area (button + input)
 
-    const currentActive = activeNav || navItems[0]?.id;
+    // Determine active item based on pathname
+    const getCurrentActiveId = () => {
+        if (pathname === '/') return 'home';
+        if (pathname?.startsWith('/weekly')) return 'weekly';
+        if (pathname?.startsWith('/my')) return 'my';
+        return '';
+    };
 
-    // 快捷键监听：Ctrl+F 或 Cmd+F
+    const currentActiveId = getCurrentActiveId();
+
     useEffect(() => {
-        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+        setActiveIndex(-1);
+    }, [searchQuery, searchResults.length]);
+
+    // Global keyboard shortcuts (Ctrl+F, Escape) and click outside to close search
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
                 e.preventDefault();
-                inputRef.current?.focus();
-                setShowResults(true);
+                setSearchExpanded(true);
+                setTimeout(() => searchInputRef.current?.focus(), 100);
+            }
+            if (e.key === 'Escape' && searchExpanded) {
+                setSearchExpanded(false);
+                setSearchQuery('');
+                setShowResults(false);
+                searchInputRef.current?.blur(); // Remove focus
             }
         };
-        window.addEventListener('keydown', handleGlobalKeyDown);
-        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-    }, []);
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+                if (!searchQuery) { // Only collapse if search query is empty
+                    setSearchExpanded(false);
+                }
+                setShowResults(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [searchExpanded, searchQuery]); // Depend on searchExpanded and searchQuery to re-evaluate handlers
 
     const filteredResults = searchQuery.trim()
         ? searchResults.filter(site =>
@@ -75,20 +110,6 @@ export default function TopNav({
             (site.description && site.description.toLowerCase().includes(searchQuery.toLowerCase()))
         ).slice(0, 8)
         : [];
-
-    useEffect(() => {
-        setActiveIndex(-1);
-    }, [searchQuery, searchResults.length]);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-                setShowResults(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (!showResults || filteredResults.length === 0) return;
@@ -106,14 +127,18 @@ export default function TopNav({
         } else if (e.key === 'Enter') {
             if (activeIndex >= 0) {
                 const result = filteredResults[activeIndex];
-                window.open(result.url, '_blank');
-                onResultSelect(result);
+                if (result.url.startsWith('/')) {
+                    router.push(result.url);
+                } else {
+                    window.open(result.url, '_blank');
+                }
+                onResultSelect?.(result);
                 setSearchQuery('');
                 setShowResults(false);
+                setSearchExpanded(false); // Collapse after selection
             }
-        } else if (e.key === 'Escape') {
-            setShowResults(false);
         }
+        // Escape key handled by global useEffect
     };
 
     const handleOpenImport = () => {
@@ -133,107 +158,162 @@ export default function TopNav({
                 {/* 一级导航菜单 */}
                 <nav className="flex items-center gap-1">
                     {navItems.map((item) => {
-                        const isActive = currentActive === item.id;
+                        const isActive = currentActiveId === item.id;
                         return (
-                            <button
+                            <Link
                                 key={item.id}
-                                onClick={() => onNavChange?.(item.id)}
-                                className="relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200"
+                                href={item.href}
+                                className="relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:bg-[var(--color-bg-tertiary)]"
                                 style={{
                                     color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-                                    backgroundColor: isActive ? 'var(--color-accent-soft)' : 'transparent'
                                 }}
                             >
                                 {item.name}
                                 {isActive && (
                                     <span
-                                        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full"
-                                        style={{ backgroundColor: 'var(--color-accent)' }}
+                                        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[1.5px] rounded-full"
+                                        style={{ backgroundColor: 'var(--color-text-primary)' }}
                                     />
                                 )}
-                            </button>
+                            </Link>
                         );
                     })}
                 </nav>
 
-                {/* 搜索框 */}
-                <div className="flex-1 max-w-md mx-8 relative" ref={searchRef}>
-                    <div className="relative group">
-                        <Search
-                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors group-focus-within:text-[var(--color-accent)]"
-                            style={{ color: 'var(--color-text-tertiary)' }}
-                        />
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            placeholder="搜索站点..."
-                            value={searchQuery}
-                            onChange={(e) => {
-                                setSearchQuery(e.target.value);
-                                setShowResults(true);
-                            }}
-                            onFocus={() => setShowResults(true)}
-                            onKeyDown={handleKeyDown}
-                            className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border transition-all outline-none"
-                            style={{
-                                backgroundColor: 'var(--color-bg-tertiary)',
-                                borderColor: 'var(--color-border)',
-                                color: 'var(--color-text-primary)'
-                            }}
-                        />
-                    </div>
-
-                    {/* 搜索结果下拉面板 */}
-                    {showResults && searchQuery.trim() && (
-                        <div
-                            className="absolute top-full left-0 right-0 mt-2 py-2 rounded-xl border z-50"
-                            style={{
-                                backgroundColor: 'var(--color-bg-secondary)',
-                                borderColor: 'var(--color-border)',
-                                boxShadow: 'var(--shadow-lg)'
-                            }}
-                        >
-                            {filteredResults.length > 0 ? (
-                                filteredResults.map((result, index) => (
-                                    <div key={result.id} className="relative group/item">
-                                        <button
-                                            onClick={() => {
-                                                window.open(result.url, '_blank');
-                                                onResultSelect(result);
-                                                setSearchQuery('');
-                                                setShowResults(false);
-                                            }}
-                                            onMouseEnter={() => {
-                                                setActiveIndex(index);
-                                            }}
-                                            className="w-full px-4 py-2.5 text-left transition-colors group"
-                                            style={{
-                                                backgroundColor: activeIndex === index ? 'var(--color-bg-tertiary)' : 'transparent'
-                                            }}
-                                        >
-                                            <div className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                                                {result.title}
-                                            </div>
-                                            <div className="text-xs flex items-center justify-between" style={{ color: 'var(--color-text-tertiary)' }}>
-                                                <span className="truncate flex-1 mr-4">{result.description || '暂无描述'}</span>
-                                                <span className="px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] group-hover:bg-[var(--color-bg-primary)] shrink-0">
-                                                    {result.categoryName}
-                                                </span>
-                                            </div>
-                                        </button>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="px-4 py-8 text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
-                                    没有找到相关站点
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-
                 {/* 右侧工具栏 */}
                 <div className="flex items-center gap-3">
+                    {/* 搜索按钮/输入框 */}
+                    <div className="relative" ref={searchRef}>
+                        {!searchExpanded ? (
+                            <button
+                                onClick={() => {
+                                    setSearchExpanded(true);
+                                    setTimeout(() => searchInputRef.current?.focus(), 100);
+                                }}
+                                className="p-2 rounded-lg transition-colors hover:bg-[var(--color-bg-tertiary)]"
+                                style={{
+                                    color: 'var(--color-text-secondary)'
+                                }}
+                                title="搜索 (Ctrl+F)"
+                            >
+                                <Search size={18} />
+                            </button>
+                        ) : (
+                            <div className="relative">
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value);
+                                        setShowResults(e.target.value.length > 0);
+                                        setActiveIndex(-1);
+                                    }}
+                                    onKeyDown={handleKeyDown}
+                                    onBlur={() => {
+                                        setTimeout(() => {
+                                            if (!searchQuery) {
+                                                setSearchExpanded(false);
+                                            }
+                                            setShowResults(false);
+                                        }, 200);
+                                    }}
+                                    placeholder={currentActiveId === 'weekly' ? '搜索文章...' : '搜索站点...'}
+                                    className="w-64 px-3 py-1.5 pl-9 pr-8 rounded-lg text-sm transition-all outline-none focus:border-[var(--color-text-primary)]"
+                                    style={{
+                                        backgroundColor: 'var(--color-bg-tertiary)',
+                                        border: '1px solid var(--color-border)',
+                                        color: 'var(--color-text-primary)'
+                                    }}
+                                />
+                                <Search
+                                    size={16}
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                                    style={{ color: 'var(--color-text-tertiary)' }}
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => {
+                                            setSearchQuery('');
+                                            setShowResults(false);
+                                            searchInputRef.current?.focus();
+                                        }}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[var(--color-bg-secondary)]"
+                                        style={{ color: 'var(--color-text-tertiary)' }}
+                                    >
+                                        ×
+                                    </button>
+                                )}
+
+                                {/* 搜索结果下拉框 */}
+                                {showResults && filteredResults.length > 0 && (
+                                    <div
+                                        className="absolute top-full right-0 mt-2 w-96 rounded-lg shadow-lg overflow-hidden z-50 max-h-96 overflow-y-auto"
+                                        style={{
+                                            backgroundColor: 'var(--color-bg-secondary)',
+                                            border: '1px solid var(--color-border)'
+                                        }}
+                                    >
+                                        {filteredResults.map((result, index) => (
+                                            <button
+                                                key={result.id}
+                                                onClick={() => {
+                                                    if (result.url.startsWith('/')) {
+                                                        router.push(result.url);
+                                                    } else {
+                                                        window.open(result.url, '_blank');
+                                                    }
+                                                    onResultSelect?.(result);
+                                                    setSearchQuery('');
+                                                    setShowResults(false);
+                                                    setSearchExpanded(false);
+                                                }}
+                                                onMouseEnter={() => setActiveIndex(index)}
+                                                className="w-full px-4 py-3 text-left transition-colors flex items-start gap-3"
+                                                style={{
+                                                    backgroundColor: index === activeIndex ? 'var(--color-accent-soft)' : 'transparent',
+                                                    borderBottom: index < filteredResults.length - 1 ? '1px solid var(--color-border)' : 'none'
+                                                }}
+                                            >
+                                                {result.url.startsWith('/') ? (
+                                                    <Search size={16} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-text-tertiary)' }} />
+                                                ) : (
+                                                    <ExternalLink size={16} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-text-tertiary)' }} />
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-medium text-sm mb-1" style={{ color: 'var(--color-text-primary)' }}>
+                                                        {result.title}
+                                                    </div>
+                                                    {result.description && (
+                                                        <div className="text-xs line-clamp-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                                            {result.description}
+                                                        </div>
+                                                    )}
+                                                    <div className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
+                                                        {result.categoryName}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                                {showResults && filteredResults.length === 0 && searchQuery.trim() && (
+                                    <div
+                                        className="absolute top-full right-0 mt-2 w-64 py-8 rounded-lg z-50"
+                                        style={{
+                                            backgroundColor: 'var(--color-bg-secondary)',
+                                            border: '1px solid var(--color-border)'
+                                        }}
+                                    >
+                                        <div className="px-4 text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+                                            没有找到相关{currentActiveId === 'weekly' ? '文章' : '站点'}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
                     {/* 主题切换 */}
                     <ThemeToggle />
 

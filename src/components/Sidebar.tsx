@@ -49,14 +49,16 @@ export default function Sidebar({
     onCategoryChange,
     isCollapsed,
     onToggle,
-    onCategoriesReorder
+    onCategoriesReorder,
+    className = ""
 }: {
     categories: Category[],
     activeCategory: string,
     onCategoryChange: (id: string) => void,
     isCollapsed: boolean,
     onToggle: () => void,
-    onCategoriesReorder?: (categories: Category[]) => void
+    onCategoriesReorder?: (categories: Category[]) => void,
+    className?: string
 }) {
     const [categories, setCategories] = useState(externalCategories);
     const [isSaving, setIsSaving] = useState(false);
@@ -180,7 +182,7 @@ export default function Sidebar({
 
     return (
         <aside
-            className={`h-screen fixed left-0 top-0 flex flex-col z-40 hidden md:flex transition-all duration-300 ease-in-out ${isCollapsed ? 'w-[72px]' : 'w-64'}`}
+            className={`h-screen fixed left-0 top-0 flex flex-col z-40 hidden md:flex transition-all duration-300 ease-in-out ${isCollapsed ? 'w-[72px]' : 'w-64'} ${className}`}
             style={{
                 backgroundColor: 'var(--sidebar-bg)',
                 borderRight: '1px solid var(--sidebar-border)'
@@ -193,10 +195,11 @@ export default function Sidebar({
             >
                 <div className={`flex items-center ${isCollapsed ? '' : 'gap-3 px-6 w-full'}`}>
                     <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0 border transition-all duration-300"
                         style={{
-                            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                            background: '#000',
+                            borderColor: 'rgba(255, 255, 255, 0.15)',
+                            color: '#fff'
                         }}
                     >
                         N
@@ -260,7 +263,7 @@ export default function Sidebar({
                 })}
             </nav>
 
-            {/* Footer - Only Collapse Button */}
+            {/* Footer - Collapse Button */}
             <div
                 className="p-3 flex-shrink-0"
                 style={{ borderTop: '1px solid var(--sidebar-border)' }}

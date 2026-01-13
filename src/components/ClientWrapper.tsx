@@ -10,6 +10,8 @@ import { Category, Site } from '@prisma/client';
 import { Menu, X } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { updateCategory } from '@/lib/category-api';
+import { CategoryEditModal } from './CategoryEditModal';
+import PageToolbar, { SortBy, SortOrder } from './PageToolbar';
 
 type CategoryWithSites = Category & { sites: Site[] };
 
@@ -20,6 +22,9 @@ export default function ClientWrapper({ initialCategories }: { initialCategories
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [activeNav, setActiveNav] = useState('tools');
+    const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+    const [sortBy, setSortBy] = useState<SortBy>('visits');
+    const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
     const isScrollingRef = useRef(false);
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -197,6 +202,16 @@ export default function ClientWrapper({ initialCategories }: { initialCategories
             >
                 {/* Add padding-top for TopNav on desktop, for mobile header on mobile */}
                 <div className="max-w-full mx-auto px-4 sm:px-10 pt-16 md:pt-20 pb-8 space-y-6 min-h-screen">
+                    {/* 页面工具栏 */}
+                    <PageToolbar
+                        onAddCategory={() => setIsCreatingCategory(true)}
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                        onSortChange={(newSortBy, newSortOrder) => {
+                            setSortBy(newSortBy);
+                            setSortOrder(newSortOrder);
+                        }}
+                    />
 
                     <div className="space-y-6">
                         {categories.map((category, index) => (
@@ -234,56 +249,81 @@ export default function ClientWrapper({ initialCategories }: { initialCategories
                                             return cat;
                                         }));
                                     }}
+                                    onDeleteCategory={async (id) => {
+                                        try {
+                                            const response = await fetch(`/api/categories/${id}`, {
+                                                method: 'DELETE',
+                                            });
+
+                                            if (!response.ok) throw new Error('Failed to delete category');
+
+                                            setCategories(prev => prev.filter(cat => cat.id !== id));
+                                        } catch (error) {
+                                            console.error('Failed to delete category:', error);
+                                            alert('删除分类失败');
+                                        }
+                                    }}
                                 />
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1800px]:grid-cols-6 min-[2200px]:grid-cols-7 min-[2600px]:grid-cols-8 min-[3000px]:grid-cols-9 min-[3400px]:grid-cols-10 gap-4">
-                                    {category.sites.map((site) => (
-                                        <div key={site.id} id={`site-${site.id}`}>
-                                            <SiteCard
-                                                site={site}
-                                                onUpdate={(updatedSite) => {
-                                                    // 局部更新站点状态并重排序
-                                                    setCategories(prev => {
-                                                        let newCategories = [...prev];
-                                                        const oldCategory = prev.find(cat => cat.sites.some(s => s.id === updatedSite.id));
+                                    {[...category.sites]
+                                        .sort((a, b) => {
+                                            if (sortBy === 'name') {
+                                                const comparison = a.title.localeCompare(b.title, 'zh-CN');
+                                                return sortOrder === 'asc' ? comparison : -comparison;
+                                            } else {
+                                                const aVisits = a.visits || 0;
+                                                const bVisits = b.visits || 0;
+                                                return sortOrder === 'asc' ? aVisits - bVisits : bVisits - aVisits;
+                                            }
+                                        })
+                                        .map((site) => (
+                                            <div key={site.id} id={`site-${site.id}`}>
+                                                <SiteCard
+                                                    site={site}
+                                                    onUpdate={(updatedSite) => {
+                                                        // 局部更新站点状态并重排序
+                                                        setCategories(prev => {
+                                                            let newCategories = [...prev];
+                                                            const oldCategory = prev.find(cat => cat.sites.some(s => s.id === updatedSite.id));
 
-                                                        if (oldCategory && oldCategory.id !== updatedSite.categoryId) {
-                                                            // 分类改变了
-                                                            newCategories = prev.map(cat => {
-                                                                if (cat.id === oldCategory.id) {
-                                                                    return { ...cat, sites: cat.sites.filter(s => s.id !== updatedSite.id) };
-                                                                }
-                                                                if (cat.id === updatedSite.categoryId) {
-                                                                    return { ...cat, sites: [...cat.sites, updatedSite] };
-                                                                }
-                                                                return cat;
-                                                            });
-                                                        } else {
-                                                            // 分类没变
-                                                            newCategories = prev.map(cat => ({
+                                                            if (oldCategory && oldCategory.id !== updatedSite.categoryId) {
+                                                                // 分类改变了
+                                                                newCategories = prev.map(cat => {
+                                                                    if (cat.id === oldCategory.id) {
+                                                                        return { ...cat, sites: cat.sites.filter(s => s.id !== updatedSite.id) };
+                                                                    }
+                                                                    if (cat.id === updatedSite.categoryId) {
+                                                                        return { ...cat, sites: [...cat.sites, updatedSite] };
+                                                                    }
+                                                                    return cat;
+                                                                });
+                                                            } else {
+                                                                // 分类没变
+                                                                newCategories = prev.map(cat => ({
+                                                                    ...cat,
+                                                                    sites: cat.sites.map(s => s.id === updatedSite.id ? { ...s, ...updatedSite } : s)
+                                                                }));
+                                                            }
+
+                                                            // 仅按点击量重新排序站点
+                                                            return newCategories.map(cat => ({
                                                                 ...cat,
-                                                                sites: cat.sites.map(s => s.id === updatedSite.id ? { ...s, ...updatedSite } : s)
+                                                                sites: [...cat.sites].sort((a, b) => (b.visits || 0) - (a.visits || 0))
                                                             }));
-                                                        }
-
-                                                        // 仅按点击量重新排序站点
-                                                        return newCategories.map(cat => ({
+                                                        });
+                                                    }}
+                                                    categories={categories.map(c => ({ id: c.id, name: c.name }))}
+                                                    onDelete={(id) => {
+                                                        // 局部从状态中移除站点
+                                                        setCategories(prev => prev.map(cat => ({
                                                             ...cat,
-                                                            sites: [...cat.sites].sort((a, b) => (b.visits || 0) - (a.visits || 0))
-                                                        }));
-                                                    });
-                                                }}
-                                                categories={categories.map(c => ({ id: c.id, name: c.name }))}
-                                                onDelete={(id) => {
-                                                    // 局部从状态中移除站点
-                                                    setCategories(prev => prev.map(cat => ({
-                                                        ...cat,
-                                                        sites: cat.sites.filter(s => s.id !== id)
-                                                    })));
-                                                }}
-                                            />
-                                        </div>
-                                    ))}
+                                                            sites: cat.sites.filter(s => s.id !== id)
+                                                        })));
+                                                    }}
+                                                />
+                                            </div>
+                                        ))}
                                 </div>
                             </section>
                         ))}
@@ -300,6 +340,32 @@ export default function ClientWrapper({ initialCategories }: { initialCategories
                     </footer>
                 </div>
             </main>
+
+            {/* 新建分类弹窗 */}
+            <CategoryEditModal
+                category={null}
+                isOpen={isCreatingCategory}
+                isCreate={true}
+                onClose={() => setIsCreatingCategory(false)}
+                onSave={async (id, data) => {
+                    try {
+                        const response = await fetch('/api/categories', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data),
+                        });
+
+                        if (!response.ok) throw new Error('Failed to create category');
+
+                        const newCategory = await response.json();
+                        setCategories(prev => [...prev, { ...newCategory, sites: [] }]);
+                        setIsCreatingCategory(false);
+                    } catch (error) {
+                        console.error('Failed to create category:', error);
+                        alert('创建分类失败');
+                    }
+                }}
+            />
         </DndProvider>
     );
 }

@@ -46,10 +46,10 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
         const centerY = rect.height / 2;
 
         // Lift-up effect: the area under the mouse comes forward
-        const rotateX = ((y - centerY) / centerY) * 15;
-        const rotateY = ((x - centerX) / centerX) * -15;
+        const rotateX = ((y - centerY) / centerY) * 8;
+        const rotateY = ((x - centerX) / centerX) * -8;
 
-        card.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.03, 1.03, 1.03)`;
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
 
         // Update Glare Position
         setGlarePosition({
@@ -152,7 +152,7 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
                 onMouseMove={handleMouseMove}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={handleMouseLeave}
-                className="card-glow group relative flex flex-col gap-3 p-4 rounded-xl transition-all duration-150 ease-out"
+                className="card-glow group relative flex flex-col gap-3 p-4 rounded-lg transition-all duration-150 ease-out"
                 style={{
                     backgroundColor: 'var(--color-bg-secondary)',
                     border: '1px solid var(--color-border)',
@@ -168,45 +168,38 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
             >
                 {/* Dynamic Glare Overlay */}
                 <div
-                    className="pointer-events-none absolute inset-0 rounded-xl transition-opacity duration-300"
+                    className="pointer-events-none absolute inset-0 rounded-lg transition-opacity duration-300"
                     style={{
-                        background: `radial-gradient(circle at ${glarePosition.x}% ${glarePosition.y}%, var(--color-glare) 0%, transparent 100%)`,
+                        background: `radial-gradient(circle at ${glarePosition.x}% ${glarePosition.y}%, var(--color-glare) 0%, transparent 80%)`,
                         opacity: glarePosition.opacity,
-                        mixBlendMode: 'screen',
-                        zIndex: 100,
-                        transform: 'translateZ(30px)'
+                        zIndex: 10,
+                        transform: 'translateZ(10px)'
                     }}
                 />
 
 
-                {/* 操作按钮组 - 统一分组样式 */}
+                {/* 操作按钮组 - 极简透明样式 */}
                 <div
-                    className="absolute top-2 right-2 flex items-center opacity-0 group-hover:opacity-100 transition-all duration-200 rounded-lg overflow-hidden"
+                    className="absolute top-2.5 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200"
                     style={{
                         zIndex: 50,
-                        transform: 'translateZ(30px)',
-                        backgroundColor: 'var(--color-bg-secondary)',
-                        border: '1px solid var(--color-border)',
-                        boxShadow: 'var(--shadow-md)'
+                        transform: 'translateZ(30px)'
                     }}
                 >
                     <button
                         onClick={handleEditClick}
-                        className="p-1.5 transition-all hover:bg-[var(--color-bg-tertiary)] flex items-center justify-center"
+                        className="p-1 rounded-md transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center justify-center"
                         title="编辑站点"
                     >
-                        <Edit size={14} style={{ color: 'var(--color-text-secondary)' }} />
+                        <Edit size={14} style={{ color: 'var(--color-text-tertiary)' }} />
                     </button>
-
-                    {/* 分割线 */}
-                    <div className="w-[1px] h-3 bg-[var(--color-border)] shrink-0" />
 
                     <button
                         onClick={handleDeleteClick}
-                        className="p-1.5 transition-all hover:bg-red-500/10 flex items-center justify-center"
+                        className="p-1 rounded-md transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center justify-center"
                         title="删除站点"
                     >
-                        <Trash2 size={14} className="text-red-500 opacity-70 hover:opacity-100" />
+                        <Trash2 size={14} style={{ color: 'var(--color-text-tertiary)' }} />
                     </button>
                 </div>
 
@@ -288,11 +281,11 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
                         transform: 'translateX(-50%)',
                         width: 'max-content',
                         maxWidth: 'min(400px, 80vw)',
-                        backgroundColor: '#1a1a1a',
-                        color: '#ffffff',
+                        backgroundColor: '#000',
+                        color: '#e6e6e6',
                         fontSize: '11px',
                         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
                         animation: 'fadeIn 0.2s ease-out'
                     }}
                 >
@@ -306,7 +299,7 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
                             marginLeft: '-4px',
                             width: '8px',
                             height: '8px',
-                            backgroundColor: '#1a1a1a',
+                            backgroundColor: '#000',
                             transform: 'rotate(45deg)'
                         }}
                     />
