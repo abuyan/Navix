@@ -9,14 +9,15 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, icon, sortOrder } = body;
+    const { name, icon, sortOrder, panelId } = body;
 
     const category = await prisma.category.update({
       where: { id },
       data: {
         ...(name && { name }),
         ...(icon !== undefined && { icon }),
-        ...(sortOrder !== undefined && { sortOrder })
+        ...(sortOrder !== undefined && { sortOrder }),
+        ...(panelId && { panelId })
       }
     });
 
@@ -37,6 +38,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    // 先删除该分类下的所有站点
+    await prisma.site.deleteMany({
+      where: { categoryId: id }
+    });
+
+    // 再删除分类
     await prisma.category.delete({
       where: { id }
     });

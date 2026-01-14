@@ -18,8 +18,11 @@
   --color-accent: #1a1a1a;
   --color-accent-soft: rgba(0, 0, 0, 0.05);
   --color-glare: rgba(0, 0, 0, 0.05);
-  --color-action-bg: #f3f4f6;
+  --color-action-bg: #f7f7f5;
   --color-action-hover: #e5e7eb;
+  --color-tooltip-bg: #000000;
+  --color-tooltip-text: #ffffff;
+  --color-tooltip-border: #000000;
 
   /* Natural Layered Shadows - Light Mode */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -39,7 +42,7 @@
   --color-bg-primary: #08090a;
   --color-bg-secondary: #0d0e10;
   --color-bg-tertiary: #151618;
-  --color-text-primary: #e6e6e6;
+  --color-text-primary: #d0d6e0;
   --color-text-secondary: #8a8b8d;
   --color-text-tertiary: #606163;
   --color-border: rgba(255, 255, 255, 0.08);
@@ -47,8 +50,11 @@
   --color-accent: #ffffff;
   --color-accent-soft: rgba(255, 255, 255, 0.08);
   --color-glare: rgba(255, 255, 255, 0.03);
-  --color-action-bg: #222325;
+  --color-action-bg: #151618;
   --color-action-hover: #2a2b2d;
+  --color-tooltip-bg: var(--color-bg-tertiary);
+  --color-tooltip-text: var(--color-text-primary);
+  --color-tooltip-border: var(--color-border);
 
   /* Natural Layered Shadows - Dark Mode */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -125,6 +131,14 @@ html.dark body {
   background: var(--color-border-hover);
 }
 
+/* Global Form Focus Styles */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--color-border-hover) !important;
+  box-shadow: none !important;
+}
+
 /* ========================================
    Utility Classes
    ======================================== */
@@ -178,25 +192,25 @@ html.dark body {
 }
 
 .btn-new-category {
-  background-color: #1a1a1a !important;
-  border-color: #1a1a1a !important;
-  color: #ffffff !important;
+  background-color: var(--color-text-primary) !important;
+  border-color: var(--color-text-primary) !important;
+  color: var(--color-bg-primary) !important;
 }
 
 .btn-new-category:hover {
-  background-color: #333333 !important;
-  border-color: #333333 !important;
+  opacity: 0.9;
 }
 
 .dark .btn-new-category {
-  background-color: var(--color-action-bg) !important;
-  border-color: var(--color-border) !important;
+  background-color: #28282c !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
   color: var(--color-text-primary) !important;
 }
 
 .dark .btn-new-category:hover {
-  background-color: var(--color-action-hover) !important;
-  border-color: var(--color-border-hover) !important;
+  background-color: #3a3a40 !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  opacity: 1;
 }
 
 /* Linear-style glowing border for dark mode cards */
@@ -292,4 +306,9 @@ input[type=number] {
 
 .dark input[type="checkbox"] {
   accent-color: var(--color-accent);
+}
+
+/* Table of Contents Item Hover */
+.toc-item:hover {
+  background-color: var(--color-bg-tertiary);
 }

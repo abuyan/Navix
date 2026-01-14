@@ -15,11 +15,13 @@ type ImportState = 'idle' | 'selected' | 'uploading' | 'success' | 'error';
 export default function ImportModal({
     isOpen,
     onClose,
-    onSuccess
+    onSuccess,
+    panelId
 }: {
     isOpen: boolean;
     onClose: () => void;
     onSuccess?: () => void;
+    panelId?: string;
 }) {
     const [state, setState] = useState<ImportState>('idle');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -99,6 +101,9 @@ export default function ImportModal({
         try {
             const formData = new FormData();
             formData.append('file', selectedFile);
+            if (panelId) {
+                formData.append('panelId', panelId);
+            }
 
             const response = await fetch('/api/import', {
                 method: 'POST',

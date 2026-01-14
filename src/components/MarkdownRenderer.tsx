@@ -20,12 +20,40 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
                     h1: ({ node, ...props }) => (
                         <h1 className="text-3xl font-bold mt-8 mb-4" style={{ color: 'var(--color-text-primary)' }} {...props} />
                     ),
-                    h2: ({ node, ...props }) => (
-                        <h2 className="text-2xl font-bold mt-6 mb-3" style={{ color: 'var(--color-text-primary)' }} {...props} />
-                    ),
-                    h3: ({ node, ...props }) => (
-                        <h3 className="text-xl font-semibold mt-4 mb-2" style={{ color: 'var(--color-text-primary)' }} {...props} />
-                    ),
+                    h2: ({ node, ...props }) => {
+                        const text = props.children?.toString() || '';
+                        const id = text
+                            .trim()
+                            .toLowerCase()
+                            .replace(/\s+/g, '-')
+                            .replace(/[^\u4e00-\u9fa5a-z0-9-]/g, '')
+                            .replace(/-+/g, '-');
+                        return (
+                            <h2
+                                id={id}
+                                className="text-2xl font-bold mt-6 mb-3 scroll-mt-24"
+                                style={{ color: 'var(--color-text-primary)' }}
+                                {...props}
+                            />
+                        );
+                    },
+                    h3: ({ node, ...props }) => {
+                        const text = props.children?.toString() || '';
+                        const id = text
+                            .trim()
+                            .toLowerCase()
+                            .replace(/\s+/g, '-')
+                            .replace(/[^\u4e00-\u9fa5a-z0-9-]/g, '')
+                            .replace(/-+/g, '-');
+                        return (
+                            <h3
+                                id={id}
+                                className="text-xl font-semibold mt-4 mb-2 scroll-mt-24"
+                                style={{ color: 'var(--color-text-primary)' }}
+                                {...props}
+                            />
+                        );
+                    },
                     h4: ({ node, ...props }) => (
                         <h4 className="text-lg font-semibold mt-4 mb-2" style={{ color: 'var(--color-text-primary)' }} {...props} />
                     ),

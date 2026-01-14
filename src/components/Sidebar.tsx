@@ -190,7 +190,7 @@ export default function Sidebar({
         >
             {/* Logo Area */}
             <div
-                className="h-14 flex items-center justify-center flex-shrink-0 transition-all duration-300"
+                className="h-16 flex items-center justify-center flex-shrink-0 transition-all duration-300"
                 style={{ borderBottom: '1px solid var(--sidebar-border)' }}
             >
                 <div className={`flex items-center ${isCollapsed ? '' : 'gap-3 px-6 w-full'}`}>
@@ -231,7 +231,8 @@ export default function Sidebar({
 
                     // 优先使用数据库中的图标
                     if (cat.icon) {
-                        IconComponent = icons[cat.icon as keyof typeof icons] || Monitor;
+                        const effectiveIcon = cat.icon === 'Home' ? 'House' : cat.icon;
+                        IconComponent = icons[effectiveIcon as keyof typeof icons] || Monitor;
                     } else {
                         // 如果没有图标，使用映射规则
                         const lowerName = cat.name.toLowerCase();

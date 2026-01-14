@@ -1,28 +1,44 @@
 'use client';
 
-import { Plus, BarChart2, Type } from 'lucide-react';
+import { Plus, Upload, BarChart2, Type } from 'lucide-react';
 
 export type SortBy = 'name' | 'visits';
 export type SortOrder = 'asc' | 'desc';
 
 interface PageToolbarProps {
     onAddCategory: () => void;
+    onImport: () => void;
     sortBy: SortBy;
     sortOrder: SortOrder;
     onSortChange: (sortBy: SortBy, sortOrder: SortOrder) => void;
 }
 
-export default function PageToolbar({ onAddCategory, sortBy, sortOrder, onSortChange }: PageToolbarProps) {
+export default function PageToolbar({ onAddCategory, onImport, sortBy, sortOrder, onSortChange }: PageToolbarProps) {
     return (
         <div className="flex items-center justify-between mb-8">
             {/* 左侧：操作按钮 */}
-            <button
-                onClick={onAddCategory}
-                className="btn-new-category group flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98]"
-            >
-                <Plus size={16} />
-                <span>新建分类</span>
-            </button>
+            <div className="flex items-center gap-3">
+                <button
+                    onClick={onAddCategory}
+                    className="btn-new-category group flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98]"
+                >
+                    <Plus size={16} />
+                    <span>新建分类</span>
+                </button>
+
+                <button
+                    onClick={onImport}
+                    className="flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98] hover:bg-[var(--color-bg-tertiary)]"
+                    style={{
+                        borderColor: 'var(--color-border)',
+                        color: 'var(--color-text-secondary)',
+                        backgroundColor: 'transparent'
+                    }}
+                >
+                    <Upload size={16} />
+                    <span>导入书签</span>
+                </button>
+            </div>
 
             {/* 右侧：分段排序控制 */}
             <div

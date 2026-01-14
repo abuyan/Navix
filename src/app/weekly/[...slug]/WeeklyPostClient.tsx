@@ -5,6 +5,7 @@ import TopNav from '@/components/TopNav';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import WeeklySidebar from '@/components/WeeklySidebar';
 import ViewTracker from '@/components/ViewTracker';
+import TableOfContents from '@/components/TableOfContents';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
@@ -32,15 +33,17 @@ interface WeeklyPostClientProps {
     categories: Category[];
     slugStr: string;
     allPosts: WeeklyPost[];
+    panels: any[];
 }
 
-export default function WeeklyPostClient({ post, categories, slugStr, allPosts }: WeeklyPostClientProps) {
+export default function WeeklyPostClient({ post, categories, slugStr, allPosts, panels }: WeeklyPostClientProps) {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
     return (
         <>
             <TopNav
                 sidebarCollapsed={sidebarCollapsed}
+                panels={panels}
                 searchResults={allPosts.map(p => ({
                     id: p.slug,
                     title: p.title,
@@ -64,7 +67,7 @@ export default function WeeklyPostClient({ post, categories, slugStr, allPosts }
 
             <main className={`min-h-screen pt-24 transition-all duration-300 ${sidebarCollapsed ? 'md:ml-[72px]' : 'md:ml-64'
                 }`} style={{ backgroundColor: 'var(--color-bg-primary)' }}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 py-8">
                     {/* 返回按钮 */}
                     <Link
                         href="/weekly"
@@ -75,9 +78,9 @@ export default function WeeklyPostClient({ post, categories, slugStr, allPosts }
                         返回周刊列表
                     </Link>
 
-                    <div>
-                        {/* 主内容区 */}
-                        <article>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        {/* 左侧：主内容区 */}
+                        <div className="lg:col-span-9">
                             {/* 文章头部 */}
                             <header className="mb-8">
                                 <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>
@@ -134,9 +137,9 @@ export default function WeeklyPostClient({ post, categories, slugStr, allPosts }
                             />
 
                             {/* 文章内容 */}
-                            <div className="mb-12">
+                            <article className="mb-12">
                                 <MarkdownRenderer content={post.content} />
-                            </div>
+                            </article>
 
                             {/* 底部导航 */}
                             <div className="pt-8" style={{ borderTop: '1px solid var(--color-border)' }}>
@@ -149,7 +152,12 @@ export default function WeeklyPostClient({ post, categories, slugStr, allPosts }
                                     返回周刊列表
                                 </Link>
                             </div>
-                        </article>
+                        </div>
+
+                        {/* 右侧：目录导航 */}
+                        <aside className="lg:col-span-3">
+                            <TableOfContents content={post.content} />
+                        </aside>
                     </div>
                 </div>
             </main>

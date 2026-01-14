@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import * as Icons from 'lucide-react';
+import { icons, X } from 'lucide-react';
 
 interface IconSelectorProps {
   selectedIcon?: string;
@@ -10,7 +10,7 @@ interface IconSelectorProps {
 }
 
 const ICON_GRID = [
-  'Home', 'Star', 'Bookmark', 'Globe', 'Folder', 'Tag',
+  'House', 'Star', 'Bookmark', 'Globe', 'Folder', 'Tag',
   'Computer', 'Smartphone', 'Monitor', 'Tablet',
   'Search', 'Settings', 'User', 'Users', 'Database',
   'Cloud', 'Code', 'Palette', 'Music', 'Video',
@@ -30,23 +30,25 @@ export function IconSelector({ selectedIcon, onIconSelect, onClose }: IconSelect
   );
 
   const IconComponent = ({ name }: { name: string }) => {
-    const Icon = Icons[name as keyof typeof Icons] as React.ComponentType<{ size?: number }>;
-    if (!Icon || typeof Icon !== 'function') {
+    const effectiveName = name === 'Home' ? 'House' : name;
+    // @ts-ignore
+    const Icon = icons[effectiveName as keyof typeof icons] as React.ComponentType<{ size?: number }>;
+    if (!Icon) {
       return <div className="w-5 h-5 text-gray-400">?</div>;
     }
     return <Icon size={20} />;
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-96 max-h-[80vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-[var(--color-bg-secondary)] rounded-2xl p-6 w-[440px] max-h-[80vh] overflow-hidden border border-[var(--color-border)] shadow-2xl">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">选择图标</h3>
           <button
             onClick={onClose}
             className="p-1 hover:bg-gray-100 rounded"
           >
-            <Icons.X size={20} />
+            <X size={20} />
           </button>
         </div>
 
@@ -56,7 +58,7 @@ export function IconSelector({ selectedIcon, onIconSelect, onClose }: IconSelect
             placeholder="搜索图标..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-xl outline-none transition-all text-sm"
           />
         </div>
 
@@ -68,7 +70,7 @@ export function IconSelector({ selectedIcon, onIconSelect, onClose }: IconSelect
                 onIconSelect(iconName);
                 onClose();
               }}
-              className={`p-2 rounded hover:bg-gray-100 flex flex-col items-center gap-1 transition-colors ${selectedIcon === iconName ? 'bg-blue-100 hover:bg-blue-200' : ''
+              className={`p-2 rounded-xl hover:bg-[var(--color-bg-tertiary)] flex flex-col items-center gap-1 transition-colors ${selectedIcon === iconName ? 'bg-[var(--color-bg-tertiary)] ring-1 ring-[var(--color-border-hover)]' : ''
                 }`}
             >
               <IconComponent name={iconName} />

@@ -12,10 +12,11 @@ import ThemeToggle from './ThemeToggle';
 import { updateCategory } from '@/lib/category-api';
 import { CategoryEditModal } from './CategoryEditModal';
 import PageToolbar, { SortBy, SortOrder } from './PageToolbar';
+import ImportModal from './ImportModal';
 
 type CategoryWithSites = Category & { sites: Site[] };
 
-export default function ClientWrapper({ initialCategories }: { initialCategories: CategoryWithSites[] }) {
+export default function ClientWrapper({ initialCategories, panelId, panels }: { initialCategories: CategoryWithSites[], panelId: string, panels: any[] }) {
     const [categories, setCategories] = useState(initialCategories);
     const initialId = categories.length > 0 ? categories[0].id : '';
     const [activeCategory, setActiveCategory] = useState(initialId);
@@ -23,6 +24,7 @@ export default function ClientWrapper({ initialCategories }: { initialCategories
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [activeNav, setActiveNav] = useState('tools');
     const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
     const [sortBy, setSortBy] = useState<SortBy>('visits');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
     const isScrollingRef = useRef(false);
@@ -131,16 +133,6 @@ export default function ClientWrapper({ initialCategories }: { initialCategories
                 }}
             />
 
-            {/* Top Navigation (Desktop) - Fixed position, top */}
-            <TopNav
-                activeNav={activeNav}
-                onNavChange={setActiveNav}
-                sidebarCollapsed={sidebarCollapsed}
-                searchResults={searchableSites}
-                onResultSelect={handleSearchResultSelect}
-                onResultFocus={handleSearchResultFocus}
-            />
-
             {/* Mobile Header - Fixed at top */}
             <div
                 className="md:hidden fixed top-0 w-full z-50 px-4 py-3 flex items-center justify-between transition-colors"
@@ -195,151 +187,171 @@ export default function ClientWrapper({ initialCategories }: { initialCategories
                 </div>
             )}
 
-            {/* Main Content Area */}
-            <main
-                className={`min-h-screen transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'md:ml-[72px]' : 'md:ml-64'}`}
-                style={{ backgroundColor: 'var(--color-bg-primary)' }}
-            >
-                {/* Add padding-top for TopNav on desktop, for mobile header on mobile */}
-                <div className="max-w-full mx-auto px-4 sm:px-10 pt-16 md:pt-20 pb-8 space-y-6 min-h-screen">
-                    {/* 页面工具栏 */}
-                    <PageToolbar
-                        onAddCategory={() => setIsCreatingCategory(true)}
-                        sortBy={sortBy}
-                        sortOrder={sortOrder}
-                        onSortChange={(newSortBy, newSortOrder) => {
-                            setSortBy(newSortBy);
-                            setSortOrder(newSortOrder);
-                        }}
-                    />
+            {/* Content Wrapper - Handles offset and flow */}
+            <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'md:ml-[72px]' : 'md:ml-64'}`}>
+                {/* Top Navigation (Desktop) - Sticky inside content wrapper */}
+                <TopNav
+                    sidebarCollapsed={sidebarCollapsed}
+                    searchResults={searchableSites}
+                    onResultSelect={handleSearchResultSelect}
+                    onResultFocus={handleSearchResultFocus}
+                    panels={panels}
+                />
 
-                    <div className="space-y-6">
-                        {categories.map((category, index) => (
-                            <section
-                                key={category.id}
-                                id={category.id}
-                                className="scroll-mt-24"
-                            >
-                                <CategoryTitle
-                                    category={{
-                                        ...category,
-                                        _count: { sites: category.sites.length }
-                                    }}
-                                    categories={categories.map(c => ({ id: c.id, name: c.name }))}
-                                    onEditComplete={async (id, data) => {
-                                        try {
-                                            await updateCategory(id, data);
-                                            // 局部更新状态，避免 window.location.reload() 导致的页面跳动和闪烁
-                                            setCategories(prev => prev.map(cat =>
-                                                cat.id === id ? { ...cat, ...data } : cat
-                                            ));
-                                        } catch (error) {
-                                            console.error('Failed to update category:', error);
-                                        }
-                                    }}
-                                    onAddSiteComplete={(newSite) => {
-                                        // 局部添加并排序
-                                        setCategories(prev => prev.map(cat => {
-                                            if (cat.id === newSite.categoryId) {
-                                                const newSites = [...cat.sites, newSite].sort((a, b) => {
-                                                    return (b.visits || 0) - (a.visits || 0);
+                {/* Main Content Area */}
+                <main
+                    className="min-h-screen"
+                    style={{ backgroundColor: 'var(--color-bg-primary)' }}
+                >
+                    {/* Add padding for TopNav on desktop, for mobile header on mobile */}
+                    <div className="max-w-full mx-auto px-4 sm:px-10 pt-20 md:pt-20 pb-8 space-y-6 min-h-screen">
+                        {/* 页面工具栏 */}
+                        <PageToolbar
+                            onAddCategory={() => setIsCreatingCategory(true)}
+                            onImport={() => setIsImporting(true)}
+                            sortBy={sortBy}
+                            sortOrder={sortOrder}
+                            onSortChange={(newSortBy, newSortOrder) => {
+                                setSortBy(newSortBy);
+                                setSortOrder(newSortOrder);
+                            }}
+                        />
+
+                        <div className="space-y-6">
+                            {categories.map((category, index) => (
+                                <section
+                                    key={category.id}
+                                    id={category.id}
+                                    className="scroll-mt-24"
+                                >
+                                    <CategoryTitle
+                                        category={{
+                                            ...category,
+                                            _count: { sites: category.sites.length }
+                                        }}
+                                        categories={categories.map(c => ({ id: c.id, name: c.name }))}
+                                        panels={panels.map(p => ({ id: p.id, name: p.name }))}
+                                        currentPanelId={panelId}
+                                        onEditComplete={async (id, data) => {
+                                            try {
+                                                await updateCategory(id, data);
+                                                // 如果 panelId 变化了，说明分类被移到了其他版块，需要刷新页面
+                                                if (data.panelId && data.panelId !== panelId) {
+                                                    window.location.reload();
+                                                    return;
+                                                }
+                                                // 局部更新状态，避免 window.location.reload() 导致的页面跳动和闪烁
+                                                setCategories(prev => prev.map(cat =>
+                                                    cat.id === id ? { ...cat, ...data } : cat
+                                                ));
+                                            } catch (error) {
+                                                console.error('Failed to update category:', error);
+                                            }
+                                        }}
+                                        onAddSiteComplete={(newSite) => {
+                                            // 局部添加并排序
+                                            setCategories(prev => prev.map(cat => {
+                                                if (cat.id === newSite.categoryId) {
+                                                    const newSites = [...cat.sites, newSite].sort((a, b) => {
+                                                        return (b.visits || 0) - (a.visits || 0);
+                                                    });
+                                                    return { ...cat, sites: newSites };
+                                                }
+                                                return cat;
+                                            }));
+                                        }}
+                                        onDeleteCategory={async (id) => {
+                                            try {
+                                                const response = await fetch(`/api/categories/${id}`, {
+                                                    method: 'DELETE',
                                                 });
-                                                return { ...cat, sites: newSites };
+
+                                                if (!response.ok) throw new Error('Failed to delete category');
+
+                                                setCategories(prev => prev.filter(cat => cat.id !== id));
+                                            } catch (error) {
+                                                console.error('Failed to delete category:', error);
+                                                alert('删除分类失败');
                                             }
-                                            return cat;
-                                        }));
-                                    }}
-                                    onDeleteCategory={async (id) => {
-                                        try {
-                                            const response = await fetch(`/api/categories/${id}`, {
-                                                method: 'DELETE',
-                                            });
+                                        }}
+                                    />
 
-                                            if (!response.ok) throw new Error('Failed to delete category');
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1800px]:grid-cols-6 min-[2200px]:grid-cols-7 min-[2600px]:grid-cols-8 min-[3000px]:grid-cols-9 min-[3400px]:grid-cols-10 gap-4">
+                                        {[...category.sites]
+                                            .sort((a, b) => {
+                                                if (sortBy === 'name') {
+                                                    const comparison = a.title.localeCompare(b.title, 'zh-CN');
+                                                    return sortOrder === 'asc' ? comparison : -comparison;
+                                                } else {
+                                                    const aVisits = a.visits || 0;
+                                                    const bVisits = b.visits || 0;
+                                                    return sortOrder === 'asc' ? aVisits - bVisits : bVisits - aVisits;
+                                                }
+                                            })
+                                            .map((site) => (
+                                                <div key={site.id} id={`site-${site.id}`}>
+                                                    <SiteCard
+                                                        site={site}
+                                                        onUpdate={(updatedSite) => {
+                                                            // 局部更新站点状态并重排序
+                                                            setCategories(prev => {
+                                                                let newCategories = [...prev];
+                                                                const oldCategory = prev.find(cat => cat.sites.some(s => s.id === updatedSite.id));
 
-                                            setCategories(prev => prev.filter(cat => cat.id !== id));
-                                        } catch (error) {
-                                            console.error('Failed to delete category:', error);
-                                            alert('删除分类失败');
-                                        }
-                                    }}
-                                />
+                                                                if (oldCategory && oldCategory.id !== updatedSite.categoryId) {
+                                                                    // 分类改变了
+                                                                    newCategories = prev.map(cat => {
+                                                                        if (cat.id === oldCategory.id) {
+                                                                            return { ...cat, sites: cat.sites.filter(s => s.id !== updatedSite.id) };
+                                                                        }
+                                                                        if (cat.id === updatedSite.categoryId) {
+                                                                            return { ...cat, sites: [...cat.sites, updatedSite] };
+                                                                        }
+                                                                        return cat;
+                                                                    });
+                                                                } else {
+                                                                    // 分类没变
+                                                                    newCategories = prev.map(cat => ({
+                                                                        ...cat,
+                                                                        sites: cat.sites.map(s => s.id === updatedSite.id ? { ...s, ...updatedSite } : s)
+                                                                    }));
+                                                                }
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1800px]:grid-cols-6 min-[2200px]:grid-cols-7 min-[2600px]:grid-cols-8 min-[3000px]:grid-cols-9 min-[3400px]:grid-cols-10 gap-4">
-                                    {[...category.sites]
-                                        .sort((a, b) => {
-                                            if (sortBy === 'name') {
-                                                const comparison = a.title.localeCompare(b.title, 'zh-CN');
-                                                return sortOrder === 'asc' ? comparison : -comparison;
-                                            } else {
-                                                const aVisits = a.visits || 0;
-                                                const bVisits = b.visits || 0;
-                                                return sortOrder === 'asc' ? aVisits - bVisits : bVisits - aVisits;
-                                            }
-                                        })
-                                        .map((site) => (
-                                            <div key={site.id} id={`site-${site.id}`}>
-                                                <SiteCard
-                                                    site={site}
-                                                    onUpdate={(updatedSite) => {
-                                                        // 局部更新站点状态并重排序
-                                                        setCategories(prev => {
-                                                            let newCategories = [...prev];
-                                                            const oldCategory = prev.find(cat => cat.sites.some(s => s.id === updatedSite.id));
-
-                                                            if (oldCategory && oldCategory.id !== updatedSite.categoryId) {
-                                                                // 分类改变了
-                                                                newCategories = prev.map(cat => {
-                                                                    if (cat.id === oldCategory.id) {
-                                                                        return { ...cat, sites: cat.sites.filter(s => s.id !== updatedSite.id) };
-                                                                    }
-                                                                    if (cat.id === updatedSite.categoryId) {
-                                                                        return { ...cat, sites: [...cat.sites, updatedSite] };
-                                                                    }
-                                                                    return cat;
-                                                                });
-                                                            } else {
-                                                                // 分类没变
-                                                                newCategories = prev.map(cat => ({
+                                                                // 仅按点击量重新排序站点
+                                                                return newCategories.map(cat => ({
                                                                     ...cat,
-                                                                    sites: cat.sites.map(s => s.id === updatedSite.id ? { ...s, ...updatedSite } : s)
+                                                                    sites: [...cat.sites].sort((a, b) => (b.visits || 0) - (a.visits || 0))
                                                                 }));
-                                                            }
-
-                                                            // 仅按点击量重新排序站点
-                                                            return newCategories.map(cat => ({
+                                                            });
+                                                        }}
+                                                        categories={categories.map(c => ({ id: c.id, name: c.name }))}
+                                                        onDelete={(id) => {
+                                                            // 局部从状态中移除站点
+                                                            setCategories(prev => prev.map(cat => ({
                                                                 ...cat,
-                                                                sites: [...cat.sites].sort((a, b) => (b.visits || 0) - (a.visits || 0))
-                                                            }));
-                                                        });
-                                                    }}
-                                                    categories={categories.map(c => ({ id: c.id, name: c.name }))}
-                                                    onDelete={(id) => {
-                                                        // 局部从状态中移除站点
-                                                        setCategories(prev => prev.map(cat => ({
-                                                            ...cat,
-                                                            sites: cat.sites.filter(s => s.id !== id)
-                                                        })));
-                                                    }}
-                                                />
-                                            </div>
-                                        ))}
-                                </div>
-                            </section>
-                        ))}
-                    </div>
+                                                                sites: cat.sites.filter(s => s.id !== id)
+                                                            })));
+                                                        }}
+                                                    />
+                                                </div>
+                                            ))}
+                                    </div>
+                                </section>
+                            ))}
+                        </div>
 
-                    <footer
-                        className="mt-20 pt-8 pb-8 text-center text-xs"
-                        style={{
-                            borderTop: '1px solid var(--color-border)',
-                            color: 'var(--color-text-tertiary)'
-                        }}
-                    >
-                        <p>© {new Date().getFullYear()} Navix. Designed with layered shadows & dark mode.</p>
-                    </footer>
-                </div>
-            </main>
+                        <footer
+                            className="mt-20 pt-8 pb-8 text-center text-xs"
+                            style={{
+                                borderTop: '1px solid var(--color-border)',
+                                color: 'var(--color-text-tertiary)'
+                            }}
+                        >
+                            <p>© {new Date().getFullYear()} Navix. Designed with layered shadows & dark mode.</p>
+                        </footer>
+                    </div>
+                </main>
+            </div>
 
             {/* 新建分类弹窗 */}
             <CategoryEditModal
@@ -352,7 +364,7 @@ export default function ClientWrapper({ initialCategories }: { initialCategories
                         const response = await fetch('/api/categories', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(data),
+                            body: JSON.stringify({ ...data, panelId }),
                         });
 
                         if (!response.ok) throw new Error('Failed to create category');
@@ -360,11 +372,36 @@ export default function ClientWrapper({ initialCategories }: { initialCategories
                         const newCategory = await response.json();
                         setCategories(prev => [...prev, { ...newCategory, sites: [] }]);
                         setIsCreatingCategory(false);
+
+                        // 延迟滚动到新分类并高亮
+                        setTimeout(() => {
+                            const element = document.getElementById(newCategory.id);
+                            if (element) {
+                                const offset = 100;
+                                const elementPosition = element.getBoundingClientRect().top;
+                                const offsetPosition = elementPosition + window.pageYOffset - offset;
+                                window.scrollTo({
+                                    top: offsetPosition,
+                                    behavior: "smooth"
+                                });
+
+                                // 添加高亮效果
+                                element.classList.add('search-highlight');
+                                setTimeout(() => element.classList.remove('search-highlight'), 2000);
+                            }
+                        }, 100);
                     } catch (error) {
                         console.error('Failed to create category:', error);
                         alert('创建分类失败');
                     }
                 }}
+            />
+            {/* 导入书签弹窗 */}
+            <ImportModal
+                isOpen={isImporting}
+                onClose={() => setIsImporting(false)}
+                panelId={panelId}
+                onSuccess={() => window.location.reload()}
             />
         </DndProvider>
     );

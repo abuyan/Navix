@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import WeeklyPageClient from './WeeklyPageClient';
+import { prisma } from '@/lib/prisma';
 
 interface WeeklyPost {
   slug: string;
@@ -51,10 +52,14 @@ async function getAllViews(): Promise<Record<string, number>> {
 }
 
 export default async function WeeklyPage() {
-  const [posts, viewsMap] = await Promise.all([
+  const [posts, viewsMap, panels] = await Promise.all([
     getWeeklyPosts(),
-    getAllViews()
+    getAllViews(),
+    // 获取所有 panels 用于导航
+    prisma.panel.findMany({
+      orderBy: { sortOrder: 'asc' }
+    })
   ]);
 
-  return <WeeklyPageClient posts={posts} viewsMap={viewsMap} />;
+  return <WeeklyPageClient posts={posts} viewsMap={viewsMap} panels={panels} />;
 }

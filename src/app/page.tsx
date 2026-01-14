@@ -6,11 +6,23 @@ import ClientWrapper from '@/components/ClientWrapper';
 export const revalidate = 60;
 
 export default async function Home() {
+  const panel = await prisma.panel.findFirst({
+    where: { slug: 'nav' },
+  });
+
+  if (!panel) return <div>Panel not found</div>;
+
+  // 获取所有 panels 用于导航
+  const allPanels = await prisma.panel.findMany({
+    orderBy: { sortOrder: 'asc' }
+  });
+
   const categories = await prisma.category.findMany({
+    where: { panelId: panel.id },
     include: {
       sites: {
         orderBy: [
-          { visits: 'desc' }       // 仅按点击量排序
+          { visits: 'desc' }
         ]
       }
     },
@@ -19,5 +31,5 @@ export default async function Home() {
     }
   });
 
-  return <ClientWrapper initialCategories={categories} />;
+  return <ClientWrapper initialCategories={categories} panelId={panel.id} panels={allPanels} />;
 }

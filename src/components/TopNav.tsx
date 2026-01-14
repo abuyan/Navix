@@ -1,8 +1,8 @@
 'use client';
 
-import { Settings, ChevronDown, Upload, Search, ExternalLink } from 'lucide-react';
+import { Settings, ChevronDown, Plus, Search, ExternalLink } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
-import ImportModal from './ImportModal';
+import PanelModal from './PanelModal';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -16,40 +16,29 @@ export type SearchResult = {
     categoryName: string;
 };
 
-type NavItem = {
-    id: string;
-    name: string;
-    href: string; // Made href required for new structure
-    isActive?: boolean;
-};
-
-const defaultNavItems: NavItem[] = [
-    { id: 'home', name: 'Nav导航', href: '/' },
+const FIXED_NAV_ITEMS = [
     { id: 'weekly', name: '周刊', href: '/weekly' },
-    { id: 'my', name: '我的导航', href: '/my' },
 ];
 
 export default function TopNav({
-    navItems = defaultNavItems,
-    activeNav, // Keeping for backward compatibility but might not be used with new routing
-    onNavChange, // Keeping for backward compatibility
     sidebarCollapsed,
     searchResults = [],
     onResultSelect,
-    onResultFocus
+    onResultFocus,
+    activePanelId, // New prop to identify current panel
+    panels = [] // New prop: panels data from server
 }: {
-    navItems?: NavItem[];
-    activeNav?: string;
-    onNavChange?: (id: string) => void;
-    sidebarCollapsed?: boolean; // Made optional to be safe
+    sidebarCollapsed?: boolean;
     searchResults?: SearchResult[];
-    onResultSelect?: (result: SearchResult) => void; // Made optional
+    onResultSelect?: (result: SearchResult) => void;
     onResultFocus?: (result: SearchResult) => void;
+    activePanelId?: string;
+    panels?: any[];
 }) {
     const pathname = usePathname();
     const router = useRouter();
     const [settingsOpen, setSettingsOpen] = useState(false);
-    const [importModalOpen, setImportModalOpen] = useState(false);
+    const [isPanelModalOpen, setIsPanelModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [showResults, setShowResults] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
@@ -57,15 +46,32 @@ export default function TopNav({
     const searchInputRef = useRef<HTMLInputElement>(null);
     const searchRef = useRef<HTMLDivElement>(null); // Ref for the entire search area (button + input)
 
-    // Determine active item based on pathname
+
+
+    // Determine active item based on pathname and panels
     const getCurrentActiveId = () => {
-        if (pathname === '/') return 'home';
+        if (pathname === '/') {
+            // Default to the first panel if on home
+            return panels[0]?.id || 'home';
+        }
         if (pathname?.startsWith('/weekly')) return 'weekly';
-        if (pathname?.startsWith('/my')) return 'my';
-        return '';
+
+        // Find panel by slug or id in pathname
+        const panel = panels.find(p => p.slug === pathname.split('/')[2] || p.id === pathname.split('/')[2]);
+        return panel?.id || '';
     };
 
-    const currentActiveId = getCurrentActiveId();
+    const currentActiveId = activePanelId || getCurrentActiveId();
+
+    // Generate full nav list: Panels + Weekly (at the end)
+    const navItems = [
+        ...panels.map(p => ({
+            id: p.id,
+            name: p.name,
+            href: p.slug === 'nav' ? '/' : `/p/${p.slug || p.id}`
+        })),
+        { id: 'weekly', name: '周刊', href: '/weekly' }
+    ];
 
     useEffect(() => {
         setActiveIndex(-1);
@@ -141,15 +147,15 @@ export default function TopNav({
         // Escape key handled by global useEffect
     };
 
-    const handleOpenImport = () => {
+    const handleOpenPanelModal = () => {
         setSettingsOpen(false);
-        setImportModalOpen(true);
+        setIsPanelModalOpen(true);
     };
 
     return (
         <>
             <header
-                className={`fixed top-0 right-0 z-50 h-14 flex items-center justify-between px-6 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'left-[72px]' : 'left-64'} hidden md:flex`}
+                className={`fixed top-0 right-0 z-50 h-16 flex items-center justify-between px-6 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'md:left-[72px]' : 'md:left-64'} hidden md:flex`}
                 style={{
                     backgroundColor: 'var(--color-bg-primary)',
                     borderBottom: '1px solid var(--color-border)'
@@ -219,7 +225,7 @@ export default function TopNav({
                                         }, 200);
                                     }}
                                     placeholder={currentActiveId === 'weekly' ? '搜索文章...' : '搜索站点...'}
-                                    className="w-64 px-3 py-1.5 pl-9 pr-8 rounded-lg text-sm transition-all outline-none focus:border-[var(--color-text-primary)]"
+                                    className="w-64 px-3 py-1.5 pl-9 pr-8 rounded-lg text-sm transition-all outline-none focus:border-[var(--color-border-hover)]"
                                     style={{
                                         backgroundColor: 'var(--color-bg-tertiary)',
                                         border: '1px solid var(--color-border)',
@@ -344,25 +350,22 @@ export default function TopNav({
                                         boxShadow: 'var(--shadow-lg)'
                                     }}
                                 >
-                                    <button
-                                        className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)]"
+                                    <Link
+                                        href="/settings"
+                                        className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
                                         style={{ color: 'var(--color-text-primary)' }}
+                                        onClick={() => setSettingsOpen(false)}
                                     >
-                                        账户设置
-                                    </button>
+                                        <Settings className="w-4 h-4" />
+                                        系统设置
+                                    </Link>
                                     <button
-                                        onClick={handleOpenImport}
+                                        onClick={handleOpenPanelModal}
                                         className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
                                         style={{ color: 'var(--color-text-primary)' }}
                                     >
-                                        <Upload className="w-4 h-4" />
-                                        导入书签
-                                    </button>
-                                    <button
-                                        className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)]"
-                                        style={{ color: 'var(--color-text-primary)' }}
-                                    >
-                                        导出数据
+                                        <Plus className="w-4 h-4" />
+                                        新增导航版块
                                     </button>
                                     <div
                                         className="my-2 mx-3 h-px"
@@ -381,10 +384,10 @@ export default function TopNav({
                 </div>
             </header>
 
-            {/* 导入书签弹窗 */}
-            <ImportModal
-                isOpen={importModalOpen}
-                onClose={() => setImportModalOpen(false)}
+            {/* 新增版块弹窗 */}
+            <PanelModal
+                isOpen={isPanelModalOpen}
+                onClose={() => setIsPanelModalOpen(false)}
                 onSuccess={() => window.location.reload()}
             />
         </>

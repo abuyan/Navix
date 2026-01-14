@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Site } from '@prisma/client';
-import { X, Upload, Image as ImageIcon, Trash2, Sparkles, Loader2, Check } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Trash2, Sparkles, Loader2, Check, ChevronDown } from 'lucide-react';
 
 interface SiteEditModalProps {
     site?: Site | null;
@@ -183,71 +183,6 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
 
                 {/* Body */}
                 <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                    {/* 所属分类 (自定义下拉框) */}
-                    {categories.length > 0 && (
-                        <div className="category-select-container relative">
-                            <label
-                                className="block text-sm font-medium mb-2"
-                                style={{ color: 'var(--color-text-secondary)' }}
-                            >
-                                所属分类
-                            </label>
-                            <div
-                                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                                className="w-full px-3 h-9 rounded-lg border cursor-pointer flex items-center justify-between transition-colors"
-                                style={{
-                                    backgroundColor: 'var(--color-bg-tertiary)',
-                                    borderColor: 'var(--color-border)',
-                                    color: 'var(--color-text-primary)'
-                                }}
-                            >
-                                <span className="text-sm">
-                                    {categories.find(c => c.id === categoryId)?.name || '选择分类'}
-                                </span>
-                                <ImageIcon
-                                    size={16}
-                                    className={`transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180' : ''}`}
-                                    style={{ color: 'var(--color-text-tertiary)' }}
-                                />
-                            </div>
-
-                            {isCategoryDropdownOpen && (
-                                <div
-                                    className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg shadow-xl border overflow-hidden animate-in fade-in zoom-in duration-150"
-                                    style={{
-                                        backgroundColor: 'var(--color-bg-secondary)',
-                                        borderColor: 'var(--color-border)',
-                                        maxHeight: '200px',
-                                        overflowY: 'auto'
-                                    }}
-                                >
-                                    {categories.map(cat => (
-                                        <div
-                                            key={cat.id}
-                                            onClick={() => {
-                                                setCategoryId(cat.id);
-                                                setIsCategoryDropdownOpen(false);
-                                            }}
-                                            className="px-4 py-2 text-sm cursor-pointer transition-colors"
-                                            style={{
-                                                backgroundColor: categoryId === cat.id ? 'var(--color-accent-soft)' : 'transparent',
-                                                color: categoryId === cat.id ? 'var(--color-accent)' : 'var(--color-text-primary)'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                if (categoryId !== cat.id) e.currentTarget.style.backgroundColor = 'var(--color-bg-tertiary)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                if (categoryId !== cat.id) e.currentTarget.style.backgroundColor = 'transparent';
-                                            }}
-                                        >
-                                            {cat.name}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
                     {/* 网址 + AI 按钮 */}
                     <div>
                         <label
@@ -261,7 +196,7 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                                 type="url"
                                 value={url}
                                 onChange={(e) => setUrl(e.target.value)}
-                                className="flex-1 px-3 h-9 rounded-lg border outline-none focus:border-[var(--color-accent)] transition-colors"
+                                className="flex-1 px-3 h-9 rounded-lg border outline-none focus:border-[var(--color-accent)] transition-colors text-sm"
                                 style={{
                                     backgroundColor: 'var(--color-bg-tertiary)',
                                     borderColor: 'var(--color-border)',
@@ -293,26 +228,94 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                         </div>
                     </div>
 
-                    {/* 站点名称 */}
-                    <div>
-                        <label
-                            className="block text-sm font-medium mb-2"
-                            style={{ color: 'var(--color-text-secondary)' }}
-                        >
-                            站点名称 *
-                        </label>
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full px-3 h-9 rounded-lg border outline-none focus:border-[var(--color-accent)] transition-colors"
-                            style={{
-                                backgroundColor: 'var(--color-bg-tertiary)',
-                                borderColor: 'var(--color-border)',
-                                color: 'var(--color-text-primary)'
-                            }}
-                            placeholder="请输入站点名称"
-                        />
+                    {/* 站点名称 + 所属分类并排 */}
+                    <div className="flex gap-4">
+                        {/* 站点名称 */}
+                        <div className="flex-[2]">
+                            <label
+                                className="block text-sm font-medium mb-2"
+                                style={{ color: 'var(--color-text-secondary)' }}
+                            >
+                                站点名称 *
+                            </label>
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="w-full px-3 h-9 rounded-lg border outline-none focus:border-[var(--color-accent)] transition-colors text-sm"
+                                style={{
+                                    backgroundColor: 'var(--color-bg-tertiary)',
+                                    borderColor: 'var(--color-border)',
+                                    color: 'var(--color-text-primary)'
+                                }}
+                                placeholder="请输入站点名称"
+                            />
+                        </div>
+
+                        {/* 所属分类 */}
+                        {categories.length > 0 && (
+                            <div className="flex-1 category-select-container relative">
+                                <label
+                                    className="block text-sm font-medium mb-2"
+                                    style={{ color: 'var(--color-text-secondary)' }}
+                                >
+                                    所属分类
+                                </label>
+                                <div
+                                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                                    className="w-full px-3 h-9 rounded-lg border cursor-pointer flex items-center justify-between transition-colors"
+                                    style={{
+                                        backgroundColor: 'var(--color-bg-tertiary)',
+                                        borderColor: 'var(--color-border)',
+                                        color: 'var(--color-text-primary)'
+                                    }}
+                                >
+                                    <span className="text-sm truncate mr-2">
+                                        {categories.find(c => c.id === categoryId)?.name || '选择分类'}
+                                    </span>
+                                    <ChevronDown
+                                        size={14}
+                                        className={`transition-transform duration-200 shrink-0 ${isCategoryDropdownOpen ? 'rotate-180' : ''}`}
+                                        style={{ color: 'var(--color-text-tertiary)' }}
+                                    />
+                                </div>
+
+                                {isCategoryDropdownOpen && (
+                                    <div
+                                        className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg shadow-xl border overflow-hidden animate-in fade-in zoom-in duration-150"
+                                        style={{
+                                            backgroundColor: 'var(--color-bg-secondary)',
+                                            borderColor: 'var(--color-border)',
+                                            maxHeight: '200px',
+                                            overflowY: 'auto'
+                                        }}
+                                    >
+                                        {categories.map(cat => (
+                                            <div
+                                                key={cat.id}
+                                                onClick={() => {
+                                                    setCategoryId(cat.id);
+                                                    setIsCategoryDropdownOpen(false);
+                                                }}
+                                                className="px-4 py-2 text-sm cursor-pointer transition-colors"
+                                                style={{
+                                                    backgroundColor: categoryId === cat.id ? 'var(--color-accent-soft)' : 'transparent',
+                                                    color: categoryId === cat.id ? 'var(--color-accent)' : 'var(--color-text-primary)'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    if (categoryId !== cat.id) e.currentTarget.style.backgroundColor = 'var(--color-bg-tertiary)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    if (categoryId !== cat.id) e.currentTarget.style.backgroundColor = 'transparent';
+                                                }}
+                                            >
+                                                {cat.name}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* 说明 */}

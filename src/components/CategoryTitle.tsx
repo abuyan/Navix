@@ -15,12 +15,14 @@ interface CategoryWithCount extends Category {
 interface CategoryTitleProps {
   category: CategoryWithCount;
   categories: { id: string; name: string }[];
-  onEditComplete: (id: string, data: { name?: string; icon?: string }) => void;
+  onEditComplete: (id: string, data: { name?: string; icon?: string; panelId?: string }) => void;
   onAddSiteComplete?: (site: Site) => void;
   onDeleteCategory?: (id: string) => void;
+  panels?: { id: string; name: string }[];  // 可用版块列表
+  currentPanelId?: string;  // 当前版块 ID
 }
 
-export function CategoryTitle({ category, categories, onEditComplete, onAddSiteComplete, onDeleteCategory }: CategoryTitleProps) {
+export function CategoryTitle({ category, categories, onEditComplete, onAddSiteComplete, onDeleteCategory, panels = [], currentPanelId }: CategoryTitleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingSite, setIsAddingSite] = useState(false);
 
@@ -53,15 +55,19 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
   const IconComponent = ({ icon }: { icon?: string }) => {
     if (!icon) return null;
 
-    const Icon = icons[icon as keyof typeof icons];
-    return Icon ? <Icon size={16} /> : <div className="w-4 h-4 text-gray-400">?</div>;
+    // 处理 Home -> House 映射
+    const effectiveName = icon === 'Home' ? 'House' : icon;
+    // @ts-ignore
+    const Icon = icons[effectiveName as keyof typeof icons] as React.ComponentType<{ size?: number }>;
+
+    return Icon ? <Icon size={14} /> : <div className="w-3.5 h-3.5 text-gray-400">?</div>;
   };
 
   return (
     <>
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-2 mb-3">
         {/* ... (existing rendering logic) */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* 图标 */}
           {category.icon && (
             <IconComponent icon={category.icon} />
@@ -73,7 +79,7 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
             onDoubleClick={() => setIsEditing(true)}
           >
             <h2
-              className="text-lg font-bold cursor-text hover:bg-[var(--color-bg-tertiary)] px-1 rounded transition-colors"
+              className="text-sm font-bold cursor-text hover:bg-[var(--color-bg-tertiary)] px-1 rounded transition-colors"
               style={{ color: 'var(--color-text-primary)' }}
               title="双击编辑"
             >
@@ -99,7 +105,7 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
             className="p-1 rounded-md hover:bg-[var(--color-bg-tertiary)] transition-colors group/btn"
             title="添加站点"
           >
-            <Plus size={16} className="text-[var(--color-text-tertiary)] group-hover/btn:text-[var(--color-accent)]" />
+            <Plus size={14} className="text-[var(--color-text-tertiary)] group-hover/btn:text-[var(--color-accent)]" />
           </button>
         </div>
       </div>
@@ -111,6 +117,8 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
         onClose={() => setIsEditing(false)}
         onSave={onEditComplete}
         onDelete={onDeleteCategory}
+        panels={panels}
+        currentPanelId={currentPanelId}
       />
 
       {/* 添加站点模态窗口 */}

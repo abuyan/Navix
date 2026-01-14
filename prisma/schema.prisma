@@ -7,11 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Panel {
+  id          String     @id @default(cuid())
+  name        String
+  icon        String?
+  sortOrder   Int        @default(0)
+  slug        String?    @unique  // Custom slug like "nav", "my"
+  categories  Category[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
 model Category {
   id        String   @id @default(cuid())
   name      String
   icon      String?
   sortOrder Int      @default(0)
+  panelId   String
+  panel     Panel    @relation(fields: [panelId], references: [id])
   sites     Site[]
   createdAt DateTime @default(now())
 }

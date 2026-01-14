@@ -2,9 +2,13 @@ import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 
 // 获取所有分类
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const panelId = searchParams.get('panelId');
+
     const categories = await prisma.category.findMany({
+      where: panelId ? { panelId } : undefined,
       orderBy: { sortOrder: 'asc' },
       include: {
         _count: {
@@ -27,17 +31,18 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, icon, sortOrder } = body;
+    const { name, icon, sortOrder, panelId } = body;
 
-    if (!name) {
+    if (!name || !panelId) {
       return NextResponse.json(
-        { error: 'Category name is required' },
+        { error: 'Name and panelId are required' },
         { status: 400 }
       );
     }
 
-    // 获取当前最大排序值
+    // 获取当前面板下最大排序值
     const maxCategory = await prisma.category.findFirst({
+      where: { panelId },
       orderBy: { sortOrder: 'desc' }
     });
     const newSortOrder = sortOrder ?? (maxCategory?.sortOrder ?? 0) + 1;
@@ -46,7 +51,8 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         icon: icon || null,
-        sortOrder: newSortOrder
+        sortOrder: newSortOrder,
+        panelId
       }
     });
 

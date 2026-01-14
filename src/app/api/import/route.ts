@@ -6,10 +6,11 @@ export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
         const file = formData.get('file') as File | null;
+        const panelId = formData.get('panelId') as string | null;
 
-        if (!file) {
+        if (!file || !panelId) {
             return NextResponse.json(
-                { error: '请选择书签文件' },
+                { error: '请选择书签文件并确认面板' },
                 { status: 400 }
             );
         }
@@ -42,8 +43,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 获取现有分类
-        const existingCategories = await prisma.category.findMany();
+        // 获取现有分类（仅限当前面板）
+        const existingCategories = await prisma.category.findMany({
+            where: { panelId }
+        });
         const categoryMap = new Map(existingCategories.map(c => [c.name.toLowerCase(), c]));
 
         // 获取现有网站 URL，用于去重
@@ -70,7 +73,8 @@ export async function POST(request: NextRequest) {
                 category = await prisma.category.create({
                     data: {
                         name: parsedCategory.name,
-                        sortOrder: currentSortOrder
+                        sortOrder: currentSortOrder,
+                        panelId
                     }
                 });
                 categoryMap.set(parsedCategory.name.toLowerCase(), category);
@@ -89,7 +93,7 @@ export async function POST(request: NextRequest) {
                     data: {
                         title: bookmark.title,
                         url: bookmark.url,
-                        icon: bookmark.icon || null,
+                        icon: null, // 忽略书签自带的低质图标，使用系统自动抓取
                         description: null,
                         categoryId: category.id
                     }

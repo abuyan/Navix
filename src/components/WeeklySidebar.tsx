@@ -10,7 +10,7 @@ const MENU_ITEM_HEIGHT = 44; // px
 interface Category {
     id: string;
     name: string;
-    count: number;
+    count?: number;
 }
 
 interface WeeklySidebarProps {
@@ -43,10 +43,10 @@ export default function WeeklySidebar({ categories, defaultActiveId, isCollapsed
         >
             {/* Logo 区域 */}
             <div
-                className="h-14 flex items-center justify-center flex-shrink-0 transition-all duration-300"
+                className="h-16 flex items-center justify-center flex-shrink-0 transition-all duration-300"
                 style={{ borderBottom: '1px solid var(--sidebar-border)' }}
             >
-                <Link href="/" className={`flex items-center ${isCollapsed ? '' : 'gap-3 px-6 w-full'}`}>
+                <Link href="/" className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-6 w-full'}`}>
                     <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0 border transition-all duration-300"
                         style={{
@@ -110,15 +110,10 @@ export default function WeeklySidebar({ categories, defaultActiveId, isCollapsed
                             {/* 文章数量 */}
                             {!isCollapsed && (
                                 <span
-                                    className="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
-                                    style={{
-                                        backgroundColor: isActive
-                                            ? 'var(--color-text-primary)'
-                                            : 'var(--color-bg-tertiary)',
-                                        color: isActive
-                                            ? 'var(--color-bg-primary)'
-                                            : 'var(--color-text-tertiary)'
-                                    }}
+                                    className={`ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold transition-all duration-300 ${activeCategory === category.id
+                                        ? 'bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]'
+                                        : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] group-hover:bg-[var(--color-bg-secondary)]'
+                                        } ${category.count === undefined ? 'hidden' : ''}`}
                                 >
                                     {category.count}
                                 </span>

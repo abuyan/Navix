@@ -229,7 +229,7 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
                                 onError={handleIconError}
                             />
                         </div>
-                        <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                        <div className="flex-1 min-w-0">
                             <h3
                                 className="font-bold text-[15px] truncate transition-colors duration-200"
                                 style={{
@@ -240,10 +240,6 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
                             >
                                 {site.title}
                             </h3>
-                            <ExternalLink
-                                className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-0.5 group-hover:translate-y-0 shrink-0"
-                                style={{ color: 'var(--color-accent)' }}
-                            />
                         </div>
                     </div>
 
@@ -281,15 +277,16 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
                         transform: 'translateX(-50%)',
                         width: 'max-content',
                         maxWidth: 'min(400px, 80vw)',
-                        backgroundColor: '#000',
-                        color: '#e6e6e6',
+                        backgroundColor: 'var(--color-tooltip-bg)',
+                        border: '1px solid var(--color-tooltip-border)',
+                        color: 'var(--color-tooltip-text)',
                         fontSize: '11px',
                         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
                         animation: 'fadeIn 0.2s ease-out'
                     }}
                 >
-                    {site.url}
+                    {site.description || site.url}
                     {/* 小箭头 - 指向上方 */}
                     <div
                         className="absolute"
@@ -299,7 +296,9 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
                             marginLeft: '-4px',
                             width: '8px',
                             height: '8px',
-                            backgroundColor: '#000',
+                            backgroundColor: 'var(--color-tooltip-bg)',
+                            borderLeft: '1px solid var(--color-tooltip-border)',
+                            borderTop: '1px solid var(--color-tooltip-border)',
                             transform: 'rotate(45deg)'
                         }}
                     />

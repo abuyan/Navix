@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import WeeklyPostClient from './WeeklyPostClient';
+import { prisma } from '@/lib/prisma';
 
 interface WeeklyPost {
     slug: string;
@@ -74,10 +75,14 @@ export default async function WeeklyPostPage({ params }: { params: Promise<{ slu
     const resolvedParams = await params;
     const slugStr = resolvedParams.slug.join('/');
 
-    const [post, allPosts, views] = await Promise.all([
+    const [post, allPosts, views, panels] = await Promise.all([
         getPost(resolvedParams.slug),
         getAllPosts(),
-        getViews(slugStr)
+        getViews(slugStr),
+        // 获取所有 panels 用于导航
+        prisma.panel.findMany({
+            orderBy: { sortOrder: 'asc' }
+        })
     ]);
 
     if (!post) {
@@ -102,5 +107,5 @@ export default async function WeeklyPostPage({ params }: { params: Promise<{ slu
         count: postsByCategory[name].length
     }));
 
-    return <WeeklyPostClient post={post} categories={categories} slugStr={slugStr} allPosts={allPosts} />;
+    return <WeeklyPostClient post={post} categories={categories} slugStr={slugStr} allPosts={allPosts} panels={panels} />;
 }
