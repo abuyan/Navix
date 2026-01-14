@@ -86,6 +86,7 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave, onDelete,
       setName(category?.name || '');
       setSelectedIcon(category?.icon || '');
       setSelectedPanelId(currentPanelId || '');
+      setSearchTerm('');  // 清空图标搜索关键词
       setShowDeleteConfirm(false);
     }
   }, [isOpen, category, currentPanelId]);

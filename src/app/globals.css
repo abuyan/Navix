@@ -256,18 +256,15 @@ select:focus {
 
 @keyframes search-highlight {
   0% {
-    outline: 2px solid transparent;
-    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
   }
 
   50% {
-    outline: 2px solid var(--color-accent);
-    transform: scale(1.02);
+    box-shadow: 0 0 0 2px var(--color-border-hover);
   }
 
   100% {
-    outline: 2px solid transparent;
-    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
   }
 }
 
@@ -275,7 +272,7 @@ select:focus {
   animation: search-highlight 1s ease-in-out 2;
   z-index: 10;
   position: relative;
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
 }
 
 @keyframes fadeIn {

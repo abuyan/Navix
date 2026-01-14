@@ -65,7 +65,7 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
 
   return (
     <>
-      <div className="flex items-center gap-2 mb-3">
+      <div id={`title-${category.id}`} className="flex items-center gap-2 mb-3">
         {/* ... (existing rendering logic) */}
         <div className="flex items-center gap-2">
           {/* 图标 */}

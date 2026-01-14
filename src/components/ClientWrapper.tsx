@@ -13,6 +13,8 @@ import { updateCategory } from '@/lib/category-api';
 import { CategoryEditModal } from './CategoryEditModal';
 import PageToolbar, { SortBy, SortOrder } from './PageToolbar';
 import ImportModal from './ImportModal';
+import { SiteEditModal } from './SiteEditModal';
+import { Site } from '@prisma/client';
 
 type CategoryWithSites = Category & { sites: Site[] };
 
@@ -25,6 +27,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
     const [activeNav, setActiveNav] = useState('tools');
     const [isCreatingCategory, setIsCreatingCategory] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
+    const [isAddingSite, setIsAddingSite] = useState(false);
     const [sortBy, setSortBy] = useState<SortBy>('visits');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
     const isScrollingRef = useRef(false);
@@ -208,6 +211,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                         {/* 页面工具栏 */}
                         <PageToolbar
                             onAddCategory={() => setIsCreatingCategory(true)}
+                            onAddSite={() => setIsAddingSite(true)}
                             onImport={() => setIsImporting(true)}
                             sortBy={sortBy}
                             sortOrder={sortOrder}
@@ -376,6 +380,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                         // 延迟滚动到新分类并高亮
                         setTimeout(() => {
                             const element = document.getElementById(newCategory.id);
+                            const titleElement = document.getElementById(`title-${newCategory.id}`);
                             if (element) {
                                 const offset = 100;
                                 const elementPosition = element.getBoundingClientRect().top;
@@ -385,9 +390,11 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                                     behavior: "smooth"
                                 });
 
-                                // 添加高亮效果
-                                element.classList.add('search-highlight');
-                                setTimeout(() => element.classList.remove('search-highlight'), 2000);
+                                // 添加高亮效果到标题行
+                                if (titleElement) {
+                                    titleElement.classList.add('search-highlight');
+                                    setTimeout(() => titleElement.classList.remove('search-highlight'), 2000);
+                                }
                             }
                         }, 100);
                     } catch (error) {
@@ -402,6 +409,28 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                 onClose={() => setIsImporting(false)}
                 panelId={panelId}
                 onSuccess={() => window.location.reload()}
+            />
+            {/* 添加站点弹窗 */}
+            <SiteEditModal
+                isOpen={isAddingSite}
+                categories={categories.map(c => ({ id: c.id, name: c.name }))}
+                onClose={() => setIsAddingSite(false)}
+                onSave={async (id, data) => {
+                    try {
+                        const response = await fetch('/api/sites', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data),
+                        });
+                        if (!response.ok) throw new Error('Failed to create site');
+                        const newSite = await response.json();
+                        // 刷新页面以显示新站点
+                        window.location.reload();
+                    } catch (error) {
+                        console.error('Failed to add site:', error);
+                        alert('添加站点失败');
+                    }
+                }}
             />
         </DndProvider>
     );

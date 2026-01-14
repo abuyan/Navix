@@ -1,19 +1,20 @@
 'use client';
 
-import { Plus, Upload, BarChart2, Type } from 'lucide-react';
+import { Plus, Upload, BarChart2, Type, Link } from 'lucide-react';
 
 export type SortBy = 'name' | 'visits';
 export type SortOrder = 'asc' | 'desc';
 
 interface PageToolbarProps {
     onAddCategory: () => void;
+    onAddSite: () => void;
     onImport: () => void;
     sortBy: SortBy;
     sortOrder: SortOrder;
     onSortChange: (sortBy: SortBy, sortOrder: SortOrder) => void;
 }
 
-export default function PageToolbar({ onAddCategory, onImport, sortBy, sortOrder, onSortChange }: PageToolbarProps) {
+export default function PageToolbar({ onAddCategory, onAddSite, onImport, sortBy, sortOrder, onSortChange }: PageToolbarProps) {
     return (
         <div className="flex items-center justify-between mb-8">
             {/* 左侧：操作按钮 */}
@@ -24,6 +25,19 @@ export default function PageToolbar({ onAddCategory, onImport, sortBy, sortOrder
                 >
                     <Plus size={16} />
                     <span>新建分类</span>
+                </button>
+
+                <button
+                    onClick={onAddSite}
+                    className="flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98] hover:bg-[var(--color-bg-tertiary)]"
+                    style={{
+                        borderColor: 'var(--color-border)',
+                        color: 'var(--color-text-secondary)',
+                        backgroundColor: 'transparent'
+                    }}
+                >
+                    <Link size={16} />
+                    <span>添加站点</span>
                 </button>
 
                 <button
