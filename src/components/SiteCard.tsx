@@ -1,34 +1,94 @@
 'use client';
 
-import { ExternalLink, Edit, MoreHorizontal, Trash2, Settings, TrendingUp, ChevronRight } from 'lucide-react';
+import { ExternalLink, Edit, MoreHorizontal, Trash2, Settings, TrendingUp, ChevronRight, Globe } from 'lucide-react';
 import { Site } from '@prisma/client';
 import { useRef, MouseEvent, useState, useEffect } from 'react';
+import { useToast } from './Toast';
 import { SiteEditModal } from './SiteEditModal';
 import { ConfirmModal } from './ConfirmModal';
 
 export default function SiteCard({ site, categories = [], onUpdate, onDelete }: { site: Site; categories?: { id: string; name: string }[]; onUpdate?: (updatedSite: Site) => void; onDelete?: (id: string) => void }) {
+    const { showToast } = useToast();
     const cardRef = useRef<HTMLDivElement>(null);
     const [glarePosition, setGlarePosition] = useState({ x: 0, y: 0, opacity: 0 });
     const [isHovered, setIsHovered] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-    const [iconUrl, setIconUrl] = useState(site.icon || `https://www.google.com/s2/favicons?domain=${site.url}&sz=64`);
+
+
+    // 判断是否为公网地址
+    const isPublicSite = (url: string) => {
+        try {
+            const hostname = new URL(url).hostname;
+            // 排除 localhost 和常见私有 IP 段
+            if (hostname === 'localhost' || hostname === '127.0.0.1') return false;
+            if (hostname.startsWith('192.168.')) return false;
+            if (hostname.startsWith('10.')) return false;
+            // 172.16.x.x - 172.31.x.x
+            if (hostname.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return false;
+            return true;
+        } catch {
+            return false;
+        }
+    };
+
+    // 获取初始图标逻辑 (AI 提取的 Base64 会在这里直接被返回，不受影响)
+    const getInitialIcon = (url: string, icon?: string | null) => {
+        if (icon) return icon; // 数据库有值（包括 AI 保存的），绝对优先
+
+        // 只有当数据库没图标时，才进行智能分流
+        if (isPublicSite(url)) {
+            try {
+                const hostname = new URL(url).hostname;
+                return `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
+            } catch {
+                return '';
+            }
+        }
+        return ''; // 内网直接返回空，触发灰色占位符
+    };
+
+    const [iconUrl, setIconUrl] = useState(getInitialIcon(site.url, site.icon));
+    // 关键修复：如果初始图标为空，必须立即设置 hasError 为 true，防止 img 渲染空 src
+    const [hasError, setHasError] = useState(!getInitialIcon(site.url, site.icon));
 
     // 当 site.icon 或 site.url 改变时，更新 iconUrl
     useEffect(() => {
-        setIconUrl(site.icon || `https://www.google.com/s2/favicons?domain=${site.url}&sz=64`);
+        const newIcon = getInitialIcon(site.url, site.icon);
+        setIconUrl(newIcon);
+        // 如果计算出的图标为空，直接显示占位符；否则重置错误状态等待加载
+        setHasError(!newIcon);
     }, [site.icon, site.url]);
 
     const handleIconError = () => {
-        const googleFavicon = `https://www.google.com/s2/favicons?domain=${site.url}&sz=64`;
-        const fallbackFavicon = `https://api.iowen.cn/favicon/${new URL(site.url).hostname}.png`;
+        // 如果当前是 Google 源失败，尝试二线方案 favicon.im
+        if (iconUrl.includes('google.com')) {
+            try {
+                const hostname = new URL(site.url).hostname;
+                setIconUrl(`https://favicon.im/${hostname}?larger=true`);
+                return;
+            } catch { }
+        }
 
-        if (iconUrl !== googleFavicon) {
-            // 如果是自定义图标失败，先尝试 Google
-            setIconUrl(googleFavicon);
-        } else if (iconUrl !== fallbackFavicon) {
-            // 如果 Google 也失败，尝试备用 API
-            setIconUrl(fallbackFavicon);
+        // 如果已经是 favicon.im 失败，或者其他情况，彻底回退
+        setHasError(true);
+    };
+
+    // 新增：图片加载完成后的质量检测
+    const handleIconLoad = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+        const img = e.currentTarget;
+        // 质量检测涵盖 Google 和 favicon.im
+        const isThirdParty = img.src.includes('google.com') || img.src.includes('favicon.im');
+
+        if (isThirdParty && img.naturalWidth < 32) {
+            // 如果当前是 Google 的低质量图，尝试回退到 favicon.im
+            if (img.src.includes('google.com')) {
+                // 手动触发 Error 处理逻辑以切换源
+                handleIconError();
+            } else {
+                // 如果是 favicon.im 也烂，或者其他情况，直接显示占位符
+                setHasError(true);
+            }
         }
     };
 
@@ -117,7 +177,7 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
             }
         } catch (error) {
             console.error('Failed to delete site:', error);
-            alert('删除失败，请重试');
+            showToast('删除失败，请重试', 'error');
         }
     };
 
@@ -222,12 +282,19 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
                             }}
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                                src={iconUrl}
-                                alt={site.title}
-                                className="w-full h-full object-contain"
-                                onError={handleIconError}
-                            />
+                            {hasError ? (
+                                <div className="w-full h-full flex items-center justify-center rounded-md bg-[var(--color-bg-tertiary)]" style={{ transform: 'scale(1.1)' }}>
+                                    <Globe size={12} className="text-[var(--color-text-tertiary)]" />
+                                </div>
+                            ) : (
+                                <img
+                                    src={iconUrl}
+                                    alt={site.title}
+                                    className="w-full h-full object-contain"
+                                    onError={handleIconError}
+                                    onLoad={handleIconLoad}
+                                />
+                            )}
                         </div>
                         <div className="flex-1 min-w-0">
                             <h3
@@ -320,7 +387,15 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
                 onClose={() => setIsDeleteConfirmOpen(false)}
                 onConfirm={handleConfirmDelete}
                 title="删除站点"
-                message={`确定要删除站点 “${site.title}” 吗？删除后将无法恢复。`}
+                message={(
+                    <span>
+                        确定要删除站点
+                        <span className="font-bold px-1 inline-block max-w-[200px] truncate align-bottom" title={site.title}>
+                            “{site.title}”
+                        </span>
+                        吗？删除后将无法恢复。
+                    </span>
+                )}
                 confirmText="删除"
                 type="danger"
             />

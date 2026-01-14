@@ -7,10 +7,11 @@ interface ConfirmModalProps {
     onClose: () => void;
     onConfirm: () => void;
     title: string;
-    message: string;
+    message: React.ReactNode;
     confirmText?: string;
     cancelText?: string;
-    type?: 'danger' | 'info';
+    showCancel?: boolean;
+    type?: 'danger' | 'info' | 'warning';
 }
 
 export function ConfirmModal({
@@ -21,6 +22,7 @@ export function ConfirmModal({
     message,
     confirmText = '确定',
     cancelText = '取消',
+    showCancel = true,
     type = 'danger'
 }: ConfirmModalProps) {
     const [mounted, setMounted] = useState(false);
@@ -68,6 +70,8 @@ export function ConfirmModal({
                 <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
                     <div className="flex items-center gap-2">
                         {type === 'danger' && <AlertTriangle size={18} className="text-red-500" />}
+                        {type === 'warning' && <AlertTriangle size={18} className="text-amber-500" />}
+                        {type === 'info' && <Info size={18} className="text-blue-500" />}
                         <h3 className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>
                             {title}
                         </h3>
@@ -80,31 +84,32 @@ export function ConfirmModal({
                     </button>
                 </div>
 
-                {/* Body */}
-                <div className="p-6">
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                <div className="p-6 max-h-[300px] overflow-y-auto">
+                    <p className="text-sm leading-relaxed break-all" style={{ color: 'var(--color-text-secondary)' }}>
                         {message}
                     </p>
                 </div>
 
                 {/* Footer */}
                 <div className="flex items-center justify-end gap-2 p-4 pt-0">
-                    <button
-                        onClick={onClose}
-                        className="px-4 h-9 rounded-lg text-sm font-medium transition-all hover:bg-[var(--color-action-hover)] active:scale-95"
-                        style={{
-                            backgroundColor: 'var(--color-action-bg)',
-                            color: 'var(--color-text-secondary)'
-                        }}
-                    >
-                        {cancelText}
-                    </button>
+                    {showCancel && (
+                        <button
+                            onClick={onClose}
+                            className="px-4 h-9 rounded-lg text-sm font-medium transition-all hover:bg-[var(--color-action-hover)] active:scale-95"
+                            style={{
+                                backgroundColor: 'var(--color-action-bg)',
+                                color: 'var(--color-text-secondary)'
+                            }}
+                        >
+                            {cancelText}
+                        </button>
+                    )}
                     <button
                         onClick={() => {
                             onConfirm();
                             onClose();
                         }}
-                        className="px-6 h-9 rounded-lg text-sm font-medium transition-all transform active:scale-95"
+                        className={`h-9 rounded-lg text-sm font-medium transition-all transform active:scale-95 ${showCancel ? 'px-6' : 'w-full px-4'}`}
                         style={{
                             backgroundColor: 'var(--color-text-primary)',
                             color: 'var(--color-bg-primary)'

@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@plugin "@tailwindcss/typography";
+
 
 /* ========================================
    CSS Variables for Light & Dark Theme
@@ -287,6 +287,59 @@ select:focus {
   }
 }
 
+/* AI Button Rotating Colorful Border Effect */
+@keyframes rotate-border {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.btn-ai-active {
+  position: relative;
+  border: none !important;
+  background-clip: padding-box;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.btn-ai-active::before {
+  content: '';
+  position: absolute;
+  top: -150%;
+  left: -50%;
+  width: 200%;
+  height: 400%;
+  background: conic-gradient(from 0deg,
+      #ef4444 0deg,
+      /* 彗星头部：红亮色 */
+      #f59e0b 5deg,
+      #eab308 15deg,
+      /* 橙黄 */
+      #22c55e 30deg,
+      /* 绿 */
+      #3b82f6 60deg,
+      /* 蓝 */
+      #3b82f6 100deg,
+      /* 蓝色长尾羽 */
+      transparent 120deg,
+      transparent 360deg);
+  animation: rotate-border 1.2s linear infinite;
+  z-index: -2;
+}
+
+.btn-ai-active::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  background: var(--color-action-bg);
+  border-radius: inherit;
+  z-index: -1;
+}
+
 /* Chrome, Safari, Edge, Opera */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
@@ -303,9 +356,4 @@ input[type=number] {
 
 .dark input[type="checkbox"] {
   accent-color: var(--color-accent);
-}
-
-/* Table of Contents Item Hover */
-.toc-item:hover {
-  background-color: var(--color-bg-tertiary);
 }

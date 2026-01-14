@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useToast } from './Toast';
 import { createPortal } from 'react-dom';
 import { icons, X, Check, Loader2, ChevronDown } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
@@ -59,6 +60,7 @@ const ICON_GRID = [
 ];
 
 export function CategoryEditModal({ category, isOpen, onClose, onSave, onDelete, isCreate = false, panels = [], currentPanelId }: CategoryEditModalProps) {
+  const { showToast } = useToast();
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState<string>('');
   const [selectedPanelId, setSelectedPanelId] = useState<string>('');
@@ -91,9 +93,10 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave, onDelete,
     }
   }, [isOpen, category, currentPanelId]);
 
+  // 2. 处理全局监听和样式的 Effect
   useEffect(() => {
     if (isOpen) {
-      // 保存当前滚动位置
+      // 【防止闪烁的关键 1】保存当前滚动位置，以便在非刷新式更新后恢复
       const scrollY = window.scrollY;
 
       // 键盘 ESC 关闭
@@ -108,19 +111,23 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave, onDelete,
       };
       window.addEventListener('keydown', handleKeyDown);
 
-      // 锁定背景滚动
+      // 【防止闪烁的关键 2】锁定背景滚动，仅修改 body 避免 documentElement 导致的跳顶
+      const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
 
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
-        document.body.style.overflow = '';
-        document.documentElement.style.overflow = '';
-        // 恢复滚动位置
-        window.scrollTo(0, scrollY);
+        document.body.style.overflow = originalOverflow;
+
+        // 【防止闪烁的关键 3】恢复滚动位置。
+        // 虽然父组件已改为局部更新状态，但在某些浏览器环境下 DOM 更新仍可能导致瞬间的滚动丢失，
+        // 这里的显式恢复能确保用户体验的连续性。
+        if (typeof window !== 'undefined') {
+          window.scrollTo(0, scrollY);
+        }
       };
     }
-  }, [isOpen, onClose, showDeleteConfirm]);
+  }, [isOpen, onClose]); // 移除了 showDeleteConfirm 依赖，防止弹窗内切换状态导致滚动重置
 
   const IconComponent = ({ name, size = 20 }: { name: string; size?: number }) => {
     // 处理旧版本的 Home -> House 映射
@@ -181,7 +188,7 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave, onDelete,
       onClose();
     } catch (error) {
       console.error('Delete failed:', error);
-      alert('删除失败');
+      showToast('删除失败', 'error');
     } finally {
       setIsDeleting(false);
     }

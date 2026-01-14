@@ -1,6 +1,6 @@
 'use client';
 
-import { Settings, ChevronDown, Plus, Search, ExternalLink } from 'lucide-react';
+import { Settings, ChevronDown, Plus, Search, ExternalLink, Layout, Cpu } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import PanelModal from './PanelModal';
 import { useState, useRef, useEffect } from 'react';
@@ -16,9 +16,7 @@ export type SearchResult = {
     categoryName: string;
 };
 
-const FIXED_NAV_ITEMS = [
-    { id: 'weekly', name: '周刊', href: '/weekly' },
-];
+const FIXED_NAV_ITEMS = [];
 
 export default function TopNav({
     sidebarCollapsed,
@@ -54,7 +52,6 @@ export default function TopNav({
             // Default to the first panel if on home
             return panels[0]?.id || 'home';
         }
-        if (pathname?.startsWith('/weekly')) return 'weekly';
 
         // Find panel by slug or id in pathname
         const panel = panels.find(p => p.slug === pathname.split('/')[2] || p.id === pathname.split('/')[2]);
@@ -63,15 +60,12 @@ export default function TopNav({
 
     const currentActiveId = activePanelId || getCurrentActiveId();
 
-    // Generate full nav list: Panels + Weekly (at the end)
-    const navItems = [
-        ...panels.map(p => ({
-            id: p.id,
-            name: p.name,
-            href: p.slug === 'nav' ? '/' : `/p/${p.slug || p.id}`
-        })),
-        { id: 'weekly', name: '周刊', href: '/weekly' }
-    ];
+    // Generate full nav list: Panels
+    const navItems = panels.map(p => ({
+        id: p.id,
+        name: p.name,
+        href: p.slug === 'home' ? '/' : `/p/${p.slug || p.id}`
+    }));
 
     useEffect(() => {
         setActiveIndex(-1);
@@ -224,7 +218,7 @@ export default function TopNav({
                                             setShowResults(false);
                                         }, 200);
                                     }}
-                                    placeholder={currentActiveId === 'weekly' ? '搜索文章...' : '搜索站点...'}
+                                    placeholder="搜索站点..."
                                     className="w-64 px-3 py-1.5 pl-9 pr-8 rounded-lg text-sm transition-all outline-none focus:border-[var(--color-border-hover)]"
                                     style={{
                                         backgroundColor: 'var(--color-bg-tertiary)',
@@ -312,7 +306,7 @@ export default function TopNav({
                                         }}
                                     >
                                         <div className="px-4 text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
-                                            没有找到相关{currentActiveId === 'weekly' ? '文章' : '站点'}
+                                            没有找到相关站点
                                         </div>
                                     </div>
                                 )}
@@ -350,23 +344,32 @@ export default function TopNav({
                                         boxShadow: 'var(--shadow-lg)'
                                     }}
                                 >
-                                    <Link
-                                        href="/settings"
-                                        className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
-                                        style={{ color: 'var(--color-text-primary)' }}
-                                        onClick={() => setSettingsOpen(false)}
-                                    >
-                                        <Settings className="w-4 h-4" />
-                                        系统设置
-                                    </Link>
                                     <button
                                         onClick={handleOpenPanelModal}
                                         className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
                                         style={{ color: 'var(--color-text-primary)' }}
                                     >
                                         <Plus className="w-4 h-4" />
-                                        新增导航版块
+                                        新增导航
                                     </button>
+                                    <Link
+                                        href="/settings?tab=panels"
+                                        className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
+                                        style={{ color: 'var(--color-text-primary)' }}
+                                        onClick={() => setSettingsOpen(false)}
+                                    >
+                                        <Layout className="w-4 h-4" />
+                                        导航管理
+                                    </Link>
+                                    <Link
+                                        href="/settings?tab=ai"
+                                        className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
+                                        style={{ color: 'var(--color-text-primary)' }}
+                                        onClick={() => setSettingsOpen(false)}
+                                    >
+                                        <Cpu className="w-4 h-4" />
+                                        AI 配置
+                                    </Link>
                                     <div
                                         className="my-2 mx-3 h-px"
                                         style={{ backgroundColor: 'var(--color-border)' }}

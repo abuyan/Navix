@@ -14,10 +14,12 @@ import { CategoryEditModal } from './CategoryEditModal';
 import PageToolbar, { SortBy, SortOrder } from './PageToolbar';
 import ImportModal from './ImportModal';
 import { SiteEditModal } from './SiteEditModal';
+import { useToast } from './Toast';
 
 type CategoryWithSites = Category & { sites: Site[] };
 
 export default function ClientWrapper({ initialCategories, panelId, panels }: { initialCategories: CategoryWithSites[], panelId: string, panels: any[] }) {
+    const { showToast } = useToast();
     const [categories, setCategories] = useState(initialCategories);
     const initialId = categories.length > 0 ? categories[0].id : '';
     const [activeCategory, setActiveCategory] = useState(initialId);
@@ -206,7 +208,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                     style={{ backgroundColor: 'var(--color-bg-primary)' }}
                 >
                     {/* Add padding for TopNav on desktop, for mobile header on mobile */}
-                    <div className="max-w-full mx-auto px-4 sm:px-10 pt-20 md:pt-20 pb-8 space-y-6 min-h-screen">
+                    <div className="max-w-full mx-auto px-4 sm:px-10 pt-24 md:pt-24 pb-8 space-y-6 min-h-screen">
                         {/* 页面工具栏 */}
                         <PageToolbar
                             onAddCategory={() => setIsCreatingCategory(true)}
@@ -274,7 +276,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                                                 setCategories(prev => prev.filter(cat => cat.id !== id));
                                             } catch (error) {
                                                 console.error('Failed to delete category:', error);
-                                                alert('删除分类失败');
+                                                showToast('删除分类失败', 'error');
                                             }
                                         }}
                                     />
@@ -398,7 +400,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                         }, 100);
                     } catch (error) {
                         console.error('Failed to create category:', error);
-                        alert('创建分类失败');
+                        showToast('创建分类失败', 'error');
                     }
                 }}
             />
@@ -427,7 +429,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                         window.location.reload();
                     } catch (error) {
                         console.error('Failed to add site:', error);
-                        alert('添加站点失败');
+                        showToast('添加站点失败', 'error');
                     }
                 }}
             />

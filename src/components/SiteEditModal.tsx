@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Site } from '@prisma/client';
-import { X, Upload, Image as ImageIcon, Trash2, Sparkles, Loader2, Check, ChevronDown } from 'lucide-react';
+import { X, Upload, Trash2, Sparkles, Loader2, Check, ChevronDown, Globe } from 'lucide-react';
+import { useToast } from './Toast';
+import { ConfirmModal } from './ConfirmModal';
 
 interface SiteEditModalProps {
     site?: Site | null;
@@ -15,6 +17,7 @@ interface SiteEditModalProps {
 }
 
 export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen, onClose, onSave }: SiteEditModalProps) {
+    const { showToast } = useToast();
     const [title, setTitle] = useState(site?.title || '');
     const [url, setUrl] = useState(site?.url || '');
     const [description, setDescription] = useState(site?.description || '');
@@ -23,7 +26,19 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
     const [isSaving, setIsSaving] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [previewError, setPreviewError] = useState(false);
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+
+    // 错误弹窗状态
+    const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; message: string }>({
+        isOpen: false,
+        title: '',
+        message: ''
+    });
+
+    const showError = (title: string, message: string) => {
+        setErrorModal({ isOpen: true, title, message });
+    };
 
     useEffect(() => {
         setMounted(true);
@@ -41,14 +56,51 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
         setMounted(true);
     }, []);
 
+    // 1. 初始化表单状态的 Effect - 仅在打开瞬间或 site 本身变化时触发
     useEffect(() => {
         if (isOpen) {
             setTitle(site?.title || '');
             setUrl(site?.url || '');
             setDescription(site?.description || '');
-            setIcon(site?.icon || '');
-            setCategoryId(site?.categoryId || defaultCategoryId || categories[0]?.id || '');
 
+            // 判断是否为公网地址 (与 SiteCard 保持一致)
+            const isPublicSite = (url: string) => {
+                try {
+                    const hostname = new URL(url).hostname;
+                    if (hostname === 'localhost' || hostname === '127.0.0.1') return false;
+                    if (hostname.startsWith('192.168.')) return false;
+                    if (hostname.startsWith('10.')) return false;
+                    if (hostname.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return false;
+                    return true;
+                } catch {
+                    return false;
+                }
+            };
+
+            // 获取初始图标逻辑
+            const getInitialIcon = (url: string, icon?: string | null) => {
+                if (icon) return icon;
+                if (isPublicSite(url)) {
+                    try {
+                        const hostname = new URL(url).hostname;
+                        return `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
+                    } catch {
+                        return '';
+                    }
+                }
+                return '';
+            };
+
+            const initialIcon = getInitialIcon(site?.url || '', site?.icon);
+            setIcon(initialIcon);
+            setPreviewError(!initialIcon);
+            setCategoryId(site?.categoryId || defaultCategoryId || categories[0]?.id || '');
+        }
+    }, [isOpen, site?.id, defaultCategoryId]); // 注意：这里移除了 onClose 依赖，并只关注 site.id
+
+    // 2. 处理全局监听和样式的 Effect
+    useEffect(() => {
+        if (isOpen) {
             // 键盘 ESC 关闭
             const handleKeyDown = (e: KeyboardEvent) => {
                 if (e.key === 'Escape') onClose();
@@ -65,12 +117,12 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                 document.documentElement.style.overflow = '';
             };
         }
-    }, [isOpen, site, onClose]);
+    }, [isOpen, onClose]); // 这里虽然包含 onClose，但它不会重置上面的表单状态
 
     // AI 智能提取
     const handleAIExtract = async () => {
         if (!url.trim()) {
-            alert('请先输入网址');
+            showToast('请先输入网址', 'info');
             return;
         }
 
@@ -79,7 +131,11 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
             const response = await fetch('/api/ai/extract', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url.trim() })
+                body: JSON.stringify({
+                    url: url.trim(),
+                    title: title.trim(), // 传入用户当前填写的名称
+                    description: description.trim() // 传入用户当前填写的说明
+                })
             });
 
             const data = await response.json();
@@ -90,13 +146,16 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
 
             // 自动填充表单
             if (data.url) setUrl(data.url);
-            if (data.title) setTitle(data.title);
-            if (data.description) setDescription(data.description);
-            // tags 暂时不处理，后续可以显示在 UI 上
+            if (data.title !== undefined) setTitle(data.title);
+            if (data.description !== undefined) setDescription(data.description || '');
+            if (data.icon) {
+                setIcon(data.icon);
+                setPreviewError(false);
+            }
 
         } catch (error) {
             console.error('AI 提取失败:', error);
-            alert(`智能提取失败: ${error instanceof Error ? error.message : '未知错误'}`);
+            showError('智能提取失败', error instanceof Error ? error.message : '未知错误');
         } finally {
             setIsExtracting(false);
         }
@@ -108,7 +167,7 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
 
         // 限制大小 200KB
         if (file.size > 200 * 1024) {
-            alert('图片大小不能超过 200KB');
+            showToast('图片大小不能超过 200KB', 'error');
             return;
         }
 
@@ -116,13 +175,14 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
         reader.onload = (event) => {
             const base64 = event.target?.result as string;
             setIcon(base64);
+            showToast('图标上传成功', 'success');
         };
         reader.readAsDataURL(file);
     };
 
     const handleSave = async () => {
         if (!title.trim() || !url.trim()) {
-            alert('标题和网址不能为空');
+            showToast('标题和网址不能为空', 'error');
             return;
         }
 
@@ -135,10 +195,11 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                 icon: icon.trim() || null,
                 categoryId
             });
+            showToast('保存成功', 'success');
             onClose();
         } catch (error) {
             console.error('保存失败:', error);
-            alert('保存失败，请重试');
+            showError('保存失败', '服务器连接超时，请重试');
         } finally {
             setIsSaving(false);
         }
@@ -208,7 +269,7 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                                 type="button"
                                 onClick={handleAIExtract}
                                 disabled={isExtracting || !url.trim()}
-                                className="group flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all border disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
+                                className={`flex items-center gap-2 px-4 h-9 rounded-lg border transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isExtracting ? 'btn-ai-active' : ''} hover:scale-[1.02] active:scale-[0.98]`}
                                 style={{
                                     backgroundColor: 'var(--color-action-bg)',
                                     borderColor: 'var(--color-border)',
@@ -376,25 +437,54 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                                 )}
                             </div>
 
-                            {/* 预览方块 */}
                             <div
-                                className="w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 p-1.5 transition-all"
+                                className="w-9 h-9 rounded-md border flex items-center justify-center shrink-0 p-1.5 transition-all overflow-hidden"
                                 style={{
                                     backgroundColor: 'var(--color-bg-tertiary)',
                                     borderColor: 'var(--color-border)'
                                 }}
                             >
-                                {icon ? (
+                                {icon && !previewError ? (
                                     <img
                                         src={icon}
                                         alt="Preview"
                                         className="w-full h-full object-contain"
                                         onError={(e) => {
-                                            (e.target as HTMLImageElement).src = `https://www.google.com/s2/favicons?domain=${url || 'example.com'}&sz=64`;
+                                            const img = e.currentTarget;
+                                            if (img.src.includes('google.com')) {
+                                                // 尝试二线方案
+                                                try {
+                                                    const hostname = new URL(url).hostname;
+                                                    setIcon(`https://favicon.im/${hostname}?larger=true`);
+                                                } catch {
+                                                    setPreviewError(true);
+                                                }
+                                            } else {
+                                                setPreviewError(true);
+                                            }
+                                        }}
+                                        onLoad={(e) => {
+                                            const img = e.currentTarget;
+                                            const isThirdParty = img.src.includes('google.com') || img.src.includes('favicon.im');
+
+                                            if (isThirdParty && img.naturalWidth < 32) {
+                                                if (img.src.includes('google.com')) {
+                                                    // Google 图片模糊，尝试切换到 favicon.im
+                                                    try {
+                                                        const hostname = new URL(url).hostname;
+                                                        setIcon(`https://favicon.im/${hostname}?larger=true`);
+                                                    } catch {
+                                                        setPreviewError(true);
+                                                    }
+                                                } else {
+                                                    // favicon.im 也模糊，彻底失败
+                                                    setPreviewError(true);
+                                                }
+                                            }
                                         }}
                                     />
                                 ) : (
-                                    <ImageIcon size={18} style={{ color: 'var(--color-text-tertiary)' }} />
+                                    <Globe size={18} style={{ color: 'var(--color-text-tertiary)' }} />
                                 )}
                             </div>
 
@@ -459,6 +549,18 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                     </button>
                 </div>
             </div>
+
+            {/* AI 错误提示弹窗 */}
+            <ConfirmModal
+                isOpen={errorModal.isOpen}
+                onClose={() => setErrorModal({ ...errorModal, isOpen: false })}
+                onConfirm={() => setErrorModal({ ...errorModal, isOpen: false })}
+                title={errorModal.title}
+                message={errorModal.message}
+                type="danger"
+                confirmText="我知道了"
+                showCancel={false}
+            />
         </div>,
         document.body
     );

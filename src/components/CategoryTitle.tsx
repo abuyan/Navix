@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useToast } from './Toast';
 import { CategoryEditModal } from './CategoryEditModal';
 import { SiteEditModal } from './SiteEditModal';
 import { Category, Site } from '@prisma/client';
@@ -23,6 +24,7 @@ interface CategoryTitleProps {
 }
 
 export function CategoryTitle({ category, categories, onEditComplete, onAddSiteComplete, onDeleteCategory, panels = [], currentPanelId }: CategoryTitleProps) {
+  const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingSite, setIsAddingSite] = useState(false);
 
@@ -48,7 +50,7 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
       setIsAddingSite(false);
     } catch (error) {
       console.error('Failed to add site:', error);
-      alert('添加站点失败');
+      showToast('添加站点失败', 'error');
     }
   };
 

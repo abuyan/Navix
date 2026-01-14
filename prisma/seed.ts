@@ -2,40 +2,64 @@ import { PrismaClient } from '@prisma/client'
 import { mockData } from '../src/data/mock'
 import 'dotenv/config'
 
-const prisma = new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL
-})
+const prisma = new PrismaClient() as any
 
 async function main() {
     console.log('Start seeding...')
 
-    // Clean up existing data
+    // Clean up existing data in correct order
     await prisma.site.deleteMany()
     await prisma.category.deleteMany()
+    await prisma.panel.deleteMany()
+    await prisma.systemConfig.deleteMany()
 
+    // 1. Create Default Panel
+    const navPanel = await prisma.panel.create({
+        data: {
+            name: "Home",
+            icon: "Layout",
+            slug: "home",
+            sortOrder: 0
+        }
+    })
+    console.log(`Created panel with id: ${navPanel.id}`)
+
+    // 2. Create Categories and Sites linked to the panel
+    let catSortOrder = 0
     for (const category of mockData) {
         const createdCategory = await prisma.category.create({
             data: {
-                name: category.name, // We use the name from mock data
-                // We'll let ID and sortOrder be default for now, or we could map them
+                name: category.name,
+                panelId: navPanel.id,
+                sortOrder: catSortOrder++
             }
         })
-        console.log(`Created category with id: ${createdCategory.id}`)
+        console.log(`Created category: ${createdCategory.name}`)
 
+        let siteSortOrder = 0
         for (const site of category.sites) {
-            const createdSite = await prisma.site.create({
+            await prisma.site.create({
                 data: {
                     title: site.title,
                     url: site.url,
                     description: site.description,
                     icon: site.icon,
                     visits: site.visits,
-                    categoryId: createdCategory.id
+                    categoryId: createdCategory.id,
+                    sortOrder: siteSortOrder++
                 }
             })
-            console.log(`Created site with id: ${createdSite.id}`)
         }
     }
+
+    // 3. Create Default AI Config (Optional but helpful)
+    await prisma.systemConfig.create({
+        data: { key: 'AI_MODEL', value: 'glm-4-flash' }
+    })
+    await prisma.systemConfig.create({
+        data: { key: 'AI_BASE_URL', value: 'https://open.bigmodel.cn/api/paas/v4' }
+    })
+
     console.log('Seeding finished.')
 }
 

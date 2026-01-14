@@ -15,6 +15,7 @@ import {
     Wrench
 } from 'lucide-react';
 import { DraggableSidebarItem } from './DraggableSidebarItem';
+import { useToast } from './Toast';
 
 // Map distinct icons to known categories for a better look
 const iconMap: Record<string, any> = {
@@ -60,6 +61,7 @@ export default function Sidebar({
     onCategoriesReorder?: (categories: Category[]) => void,
     className?: string
 }) {
+    const { showToast } = useToast();
     const [categories, setCategories] = useState(externalCategories);
     const [isSaving, setIsSaving] = useState(false);
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -147,7 +149,7 @@ export default function Sidebar({
             hasChangesRef.current = false;
         } catch (error) {
             console.error('保存分类顺序失败:', error);
-            alert(`保存分类顺序失败: ${error instanceof Error ? error.message : '未知错误'}`);
+            showToast(`保存分类顺序失败: ${error instanceof Error ? error.message : '未知错误'}`, 'error');
         } finally {
             setIsSaving(false);
         }
