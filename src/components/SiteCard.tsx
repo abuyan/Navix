@@ -180,7 +180,7 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
 
                 {/* 操作按钮组 - 极简透明样式 */}
                 <div
-                    className="absolute top-2.5 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                    className="absolute top-2.5 right-2 flex items-center opacity-0 group-hover:opacity-100 transition-all duration-200"
                     style={{
                         zIndex: 50,
                         transform: 'translateZ(30px)'

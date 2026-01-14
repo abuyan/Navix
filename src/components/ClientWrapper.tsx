@@ -14,7 +14,6 @@ import { CategoryEditModal } from './CategoryEditModal';
 import PageToolbar, { SortBy, SortOrder } from './PageToolbar';
 import ImportModal from './ImportModal';
 import { SiteEditModal } from './SiteEditModal';
-import { Site } from '@prisma/client';
 
 type CategoryWithSites = Category & { sites: Site[] };
 
