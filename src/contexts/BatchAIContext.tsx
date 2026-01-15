@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import { Site } from '@prisma/client';
+import { useToast } from '@/components/Toast';
 
 interface BatchAIContextType {
     isBatchAnalyzing: boolean;
@@ -13,6 +14,7 @@ interface BatchAIContextType {
 const BatchAIContext = createContext<BatchAIContextType | undefined>(undefined);
 
 export function BatchAIProvider({ children }: { children: React.ReactNode }) {
+    const { showToast } = useToast();
     const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
     const [batchProgress, setBatchProgress] = useState('');
     const shouldStopRef = useRef(false);
@@ -36,7 +38,7 @@ export function BatchAIProvider({ children }: { children: React.ReactNode }) {
         const pendingSites = sites.filter(site => !site.aiAnalyzed);
 
         if (pendingSites.length === 0) {
-            setBatchProgress('没有需要整理的站点');
+            setBatchProgress('没有需要整理的网页');
             setTimeout(() => setBatchProgress(''), 3000);
             return;
         }
@@ -67,7 +69,29 @@ export function BatchAIProvider({ children }: { children: React.ReactNode }) {
                         })
                     });
 
-                    if (!extractRes.ok) throw new Error('Extract failed');
+                    if (!extractRes.ok) {
+                        let errorMsg = 'AI 请求失败';
+                        try {
+                            const errData = await extractRes.json();
+                            errorMsg = errData.error || errorMsg;
+                        } catch (e) { /* ignore JSON parse error */ }
+
+                        if (extractRes.status === 401 || extractRes.status === 500) {
+                            // If 500, it might be an API Key error wrapped by backend
+                            console.warn('AI API Error (Handled):', errorMsg);
+
+                            let displayMsg = 'AI 服务异常';
+                            if (errorMsg.includes('401') || errorMsg.includes('Key') || errorMsg.includes('token')) {
+                                displayMsg = '认证失败: API Key 无效';
+                            }
+
+                            setBatchProgress(displayMsg);
+                            showToast(displayMsg, 'error');
+                            shouldStopRef.current = true;
+                            throw new Error('CONFIG_ERROR');
+                        }
+                        throw new Error(errorMsg);
+                    }
                     const extractData = await extractRes.json();
 
                     // 2. Update Site with aiAnalyzed=true
@@ -91,7 +115,10 @@ export function BatchAIProvider({ children }: { children: React.ReactNode }) {
 
                     notifyListeners(updatedSite);
                     successCount++;
-                } catch (err) {
+                } catch (err: any) {
+                    if (err.message === 'CONFIG_ERROR' || err.message === 'AUTH_ERROR') {
+                        break; // Stop loop immediately
+                    }
                     console.error(`Failed to analyze site ${site.id}:`, err);
                     failCount++;
                 }

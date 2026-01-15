@@ -17,10 +17,26 @@ export const authConfig = {
 
             return true;
         },
-        // Enhance session with user ID
+        // Enhance session with user ID and username
+        async jwt({ token, user, trigger, session }) {
+            if (user) {
+                token.id = user.id;
+                // @ts-ignore
+                token.username = user.username;
+            }
+            // Support updating session client-side
+            if (trigger === "update" && session?.username) {
+                token.username = session.username;
+            }
+            return token;
+        },
         session({ session, token }) {
             if (session.user && token.sub) {
                 session.user.id = token.sub;
+            }
+            if (session.user && token.username) {
+                // @ts-ignore
+                session.user.username = token.username;
             }
             return session;
         },

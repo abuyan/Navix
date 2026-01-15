@@ -5,7 +5,7 @@ import { auth } from '@/auth';
 export async function POST(request: Request) {
     try {
         const session = await auth();
-        if (!session?.user) {
+        if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
                 description,
                 icon,
                 categoryId,
+                userId: session.user.id,
                 sortOrder: sortOrder || 0,
                 isPinned: isPinned || false,
             },

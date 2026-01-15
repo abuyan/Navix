@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/auth';
 
 export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { id } = await params;
         const body = await request.json();
         const { title, url, description, icon, categoryId, sortOrder, isPinned, tags, aiAnalyzed } = body;
@@ -22,7 +28,7 @@ export async function PATCH(
         if (aiAnalyzed !== undefined) updateData.aiAnalyzed = aiAnalyzed;
 
         const updatedSite = await prisma.site.update({
-            where: { id },
+            where: { id, userId: session.user.id },
             data: updateData
         });
 
@@ -30,7 +36,7 @@ export async function PATCH(
     } catch (error: any) {
         console.error('Update site error:', error);
         return NextResponse.json(
-            { error: error.message || '更新站点失败' },
+            { error: error.message || '更新网页失败' },
             { status: 500 }
         );
     }
@@ -41,17 +47,22 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { id } = await params;
 
         await prisma.site.delete({
-            where: { id }
+            where: { id, userId: session.user.id }
         });
 
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Delete site error:', error);
         return NextResponse.json(
-            { error: '删除站点失败' },
+            { error: '删除网页失败' },
             { status: 500 }
         );
     }

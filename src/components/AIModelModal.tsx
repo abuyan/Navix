@@ -71,13 +71,14 @@ export default function AIModelModal({ isOpen, onClose, onSave, model }: AIModel
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-4" autoComplete="off">
                     <div>
                         <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
                             配置名称
                         </label>
                         <input
                             autoFocus
+                            autoComplete="off"
                             type="text"
                             value={formData.name}
                             onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -93,6 +94,7 @@ export default function AIModelModal({ isOpen, onClose, onSave, model }: AIModel
                         </label>
                         <input
                             type="text"
+                            autoComplete="off"
                             value={formData.model}
                             onChange={e => setFormData({ ...formData, model: e.target.value })}
                             placeholder="例如：glm-4-flash"
@@ -107,6 +109,7 @@ export default function AIModelModal({ isOpen, onClose, onSave, model }: AIModel
                         </label>
                         <input
                             type="text"
+                            autoComplete="off"
                             value={formData.baseUrl}
                             onChange={e => setFormData({ ...formData, baseUrl: e.target.value })}
                             placeholder="https://open.bigmodel.cn/api/paas/v4"
@@ -120,7 +123,9 @@ export default function AIModelModal({ isOpen, onClose, onSave, model }: AIModel
                             API Key
                         </label>
                         <input
-                            type="password"
+                            type="text"
+                            autoComplete="off"
+                            style={{ WebkitTextSecurity: 'disc' } as any}
                             value={formData.apiKey}
                             onChange={e => setFormData({ ...formData, apiKey: e.target.value })}
                             placeholder="sk-..."

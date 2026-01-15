@@ -104,7 +104,7 @@ export function DraggableCategory({
             </h2>
           </div>
 
-          {/* 站点数量 */}
+          {/* 网页数量 */}
           <span
             className="text-xs font-medium px-2 py-0.5 rounded-full"
             style={{

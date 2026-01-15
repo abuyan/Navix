@@ -448,7 +448,7 @@ export function CategoryEditModal({ category, isOpen, onClose, onSave, onDelete,
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeleteConfirm}
         title="确认删除"
-        message={`确定要删除分类 "${category?.name}" 吗？删除后无法恢复，且该分类下的所有站点也会被删除。`}
+        message={`确定要删除分类 "${category?.name}" 吗？删除后无法恢复，且该分类下的所有网页也会被删除。`}
         confirmText="确认删除"
       />
     </>,

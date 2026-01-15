@@ -1,9 +1,16 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/auth';
 
 // 批量更新排序
 export async function PUT(request: NextRequest) {
     try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        const userId = session.user.id;
+
         const body = await request.json();
         const { panels } = body;  // [{ id: string, sortOrder: number }]
 
@@ -14,11 +21,11 @@ export async function PUT(request: NextRequest) {
             );
         }
 
-        // 批量更新
+        // 批量更新，加入 userId 校验确保安全
         await Promise.all(
             panels.map((p: { id: string; sortOrder: number }) =>
                 prisma.panel.update({
-                    where: { id: p.id },
+                    where: { id: p.id, userId },
                     data: { sortOrder: p.sortOrder }
                 })
             )

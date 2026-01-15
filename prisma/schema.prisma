@@ -13,6 +13,9 @@ model Panel {
   icon       String?
   sortOrder  Int        @default(0)
   slug       String?    @unique
+  isPublic   Boolean    @default(false)
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   categories Category[]
@@ -24,8 +27,10 @@ model Category {
   icon      String?
   sortOrder Int      @default(0)
   panelId   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-  panel     Panel    @relation(fields: [panelId], references: [id])
+  panel     Panel    @relation(fields: [panelId], references: [id], onDelete: Cascade)
   sites     Site[]
 }
 
@@ -39,11 +44,13 @@ model Site {
   sortOrder   Int      @default(0)
   isPinned    Boolean  @default(false)
   categoryId  String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   tags        String?
   aiAnalyzed  Boolean  @default(false)
-  category    Category @relation(fields: [categoryId], references: [id])
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 }
 
 model WeeklyPost {
@@ -92,12 +99,28 @@ model Session {
 model User {
   id            String    @id @default(cuid())
   name          String?
+  username      String?   @unique
   email         String?   @unique
   emailVerified DateTime?
   image         String?
   password      String?
   accounts      Account[]
   sessions      Session[]
+  panels        Panel[]
+  categories    Category[]
+  sites         Site[]
+  settings      UserSetting[]
+}
+
+model UserSetting {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
 }
 
 model VerificationToken {

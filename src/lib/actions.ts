@@ -23,5 +23,5 @@ export async function authenticate(
 }
 
 export async function handleSignOut() {
-    await signOut();
+    await signOut({ redirectTo: '/' });
 }

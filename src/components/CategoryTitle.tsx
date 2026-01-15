@@ -51,7 +51,7 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
       setIsAddingSite(false);
     } catch (error) {
       console.error('Failed to add site:', error);
-      showToast('添加站点失败', 'error');
+      showToast('添加网页失败', 'error');
     }
   };
 
@@ -90,7 +90,7 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
             </h2>
           </div>
 
-          {/* 站点数量 */}
+          {/* 网页数量 */}
           <span
             className="text-xs font-medium px-2 py-0.5 rounded-full"
             style={{
@@ -102,12 +102,12 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
             {category._count.sites}
           </span>
 
-          {/* 添加站点按钮 - Only show if user is authenticated */}
+          {/* 添加网页按钮 - Only show if user is authenticated */}
           {user && (
             <button
               onClick={() => setIsAddingSite(true)}
               className="p-1 rounded-md hover:bg-[var(--color-bg-tertiary)] transition-colors group/btn"
-              title="添加站点"
+              title="添加网页"
             >
               <Plus size={14} className="text-[var(--color-text-tertiary)] group-hover/btn:text-[var(--color-accent)]" />
             </button>
@@ -126,7 +126,7 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
         currentPanelId={currentPanelId}
       />
 
-      {/* 添加站点模态窗口 */}
+      {/* 添加网页模态窗口 */}
       <SiteEditModal
         isOpen={isAddingSite}
         categories={categories}

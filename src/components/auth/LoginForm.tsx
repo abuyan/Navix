@@ -1,17 +1,44 @@
 'use client';
 
-import { useActionState } from 'react';
-import { authenticate } from '@/lib/actions';
+import { useState } from 'react';
+import { signIn } from 'next-auth/react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 export default function LoginForm() {
-    const [errorMessage, formAction, isPending] = useActionState(
-        authenticate,
-        undefined,
-    );
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [isPending, setIsPending] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setIsPending(true);
+        setErrorMessage(null);
+
+        const formData = new FormData(e.currentTarget);
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
+
+        try {
+            const result = await signIn('credentials', {
+                email,
+                password,
+                redirect: false, // 不自动重定向，手动处理
+            });
+
+            if (result?.error) {
+                setErrorMessage('邮箱或密码错误');
+                setIsPending(false);
+            } else {
+                // 登录成功，硬刷新跳转到首页（确保服务端重新渲染）
+                window.location.href = '/';
+            }
+        } catch (error) {
+            setErrorMessage('登录失败，请重试');
+            setIsPending(false);
+        }
+    };
 
     return (
-        <form action={formAction} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="space-y-2">
                 <label
                     className="text-sm font-medium"
@@ -69,6 +96,7 @@ export default function LoginForm() {
             )}
 
             <button
+                type="submit"
                 className="w-full h-9 mt-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 style={{
                     backgroundColor: 'var(--color-text-primary)',

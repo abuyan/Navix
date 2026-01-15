@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseBookmarkHTML, isValidBookmarkHTML } from '@/lib/bookmark-parser';
+import { auth } from '@/auth';
 
 export async function POST(request: NextRequest) {
     try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const formData = await request.formData();
         const file = formData.get('file') as File | null;
         const panelId = formData.get('panelId') as string | null;
@@ -13,6 +19,15 @@ export async function POST(request: NextRequest) {
                 { error: '请选择书签文件并确认面板' },
                 { status: 400 }
             );
+        }
+
+        // Verify panel ownership
+        const panel = await prisma.panel.findUnique({
+            where: { id: panelId }
+        });
+
+        if (!panel || (panel.userId !== session.user.id)) {
+            return NextResponse.json({ error: '无权操作此面板' }, { status: 403 });
         }
 
         // 读取文件内容
@@ -49,8 +64,9 @@ export async function POST(request: NextRequest) {
         });
         const categoryMap = new Map(existingCategories.map(c => [c.name.toLowerCase(), c]));
 
-        // 获取现有网站 URL，用于去重
+        // 获取现有网站 URL，用于去重 (Scoped to User)
         const existingSites = await prisma.site.findMany({
+            where: { userId: session.user.id },
             select: { url: true }
         });
         const existingUrls = new Set(existingSites.map(s => s.url.toLowerCase()));
@@ -74,7 +90,8 @@ export async function POST(request: NextRequest) {
                     data: {
                         name: parsedCategory.name,
                         sortOrder: currentSortOrder,
-                        panelId
+                        panelId,
+                        userId: session.user.id
                     }
                 });
                 categoryMap.set(parsedCategory.name.toLowerCase(), category);
@@ -95,7 +112,8 @@ export async function POST(request: NextRequest) {
                         url: bookmark.url,
                         icon: null, // 忽略书签自带的低质图标，使用系统自动抓取
                         description: null,
-                        categoryId: category.id
+                        categoryId: category.id,
+                        userId: session.user.id
                     }
                 });
 

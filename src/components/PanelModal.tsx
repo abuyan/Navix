@@ -12,22 +12,24 @@ interface PanelModalProps {
         id: string;
         name: string;
         slug: string | null;
+        isPublic?: boolean;
     };
 }
 
 export default function PanelModal({ isOpen, onClose, onSuccess, panel }: PanelModalProps) {
     const [name, setName] = useState('');
-    const [slug, setSlug] = useState('');
+    const [isPublic, setIsPublic] = useState(false);
+
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (panel) {
             setName(panel.name);
-            setSlug(panel.slug || '');
+            setIsPublic(panel.isPublic || false);
         } else {
             setName('');
-            setSlug('');
+            setIsPublic(false);
         }
         setError(null);
     }, [panel, isOpen]);
@@ -46,7 +48,7 @@ export default function PanelModal({ isOpen, onClose, onSuccess, panel }: PanelM
             const response = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, slug: slug.trim() || undefined }),
+                body: JSON.stringify({ name, isPublic }),
             });
 
             const data = await response.json();
@@ -82,7 +84,7 @@ export default function PanelModal({ isOpen, onClose, onSuccess, panel }: PanelM
                 {/* Header */}
                 <div className="px-6 py-4 flex items-center justify-between border-b border-[var(--color-border)]">
                     <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
-                        {panel ? '编辑版块' : '新增导航版块'}
+                        {panel ? '编辑收藏夹' : '新增收藏夹'}
                     </h2>
                     <button
                         onClick={onClose}
@@ -95,7 +97,7 @@ export default function PanelModal({ isOpen, onClose, onSuccess, panel }: PanelM
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-                            版块名称
+                            收藏夹名称
                         </label>
                         <input
                             autoFocus
@@ -108,26 +110,21 @@ export default function PanelModal({ isOpen, onClose, onSuccess, panel }: PanelM
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-                            路径标识 (Slug)
-                        </label>
-                        <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)] text-sm">
-                                /p/
-                            </span>
-                            <input
-                                type="text"
-                                value={slug}
-                                onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                                placeholder="work-tools"
-                                className="w-full pl-10 pr-4 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-xl outline-none focus:border-[var(--color-text-tertiary)] transition-all text-sm"
-                            />
+                    <div className="flex items-center justify-between p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-xl">
+                        <div>
+                            <div className="text-sm font-medium text-[var(--color-text-primary)]">公开共享</div>
+                            <div className="text-xs text-[var(--color-text-tertiary)]">允许未登录访客查看此版块</div>
                         </div>
-                        <p className="mt-1.5 text-xs text-[var(--color-text-tertiary)]">
-                            用于浏览器地址栏，选填。留空将使用默认 ID。
-                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setIsPublic(!isPublic)}
+                            className={`w-10 h-6 rounded-full transition-colors relative ${isPublic ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-bg-tertiary)]'}`}
+                        >
+                            <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${isPublic ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </button>
                     </div>
+
+                    {/* Slug input removed as per user request (system auto-generated) */}
 
                     {error && (
                         <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs">

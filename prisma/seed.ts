@@ -17,24 +17,68 @@ async function main() {
     // or we can strictly control it. Given this is dev seed, maybe we should?
     // Let's decide to NOT delete users for now, or check existence.
 
-    // 1. Create Default Panel
-    const navPanel = await prisma.panel.create({
+    // 1. Create Default Admin User
+    const hashedPassword = await bcrypt.hash('admin123', 10)
+    const adminUser = await prisma.user.upsert({
+        where: { email: 'admin@navix.com' },
+        update: {},
+        create: {
+            name: 'Admin',
+            username: 'admin',
+            email: 'admin@navix.com',
+            password: hashedPassword
+        }
+    })
+    console.log(`Admin user ready: ${adminUser.email} (ID: ${adminUser.id})`)
+
+    // 2. Create Default Panels (Owned by Admin, Public)
+    const homePanel = await prisma.panel.create({
         data: {
             name: "Home",
             icon: "Layout",
             slug: "home",
-            sortOrder: 0
+            sortOrder: 0,
+            isPublic: true,
+            userId: adminUser.id
         }
     })
-    console.log(`Created panel with id: ${navPanel.id}`)
+    console.log(`Created panel: Home (${homePanel.id})`)
 
-    // 2. Create Categories and Sites linked to the panel
+    const toolsPanel = await prisma.panel.create({
+        data: {
+            name: "常用工具",
+            icon: "Wrench",
+            slug: "tools",
+            sortOrder: 1,
+            isPublic: true,
+            userId: adminUser.id
+        }
+    })
+    console.log(`Created panel: Tools (${toolsPanel.id})`)
+
+    const workPanel = await prisma.panel.create({
+        data: {
+            name: "工作",
+            icon: "Briefcase",
+            slug: "work",
+            sortOrder: 2,
+            isPublic: true,
+            userId: adminUser.id
+        }
+    })
+    console.log(`Created panel: Work (${workPanel.id})`)
+
+    // Use Home as default for categories
+    const navPanel = homePanel;
+
+    // 3. Create Categories and Sites linked to the panel and user
     let catSortOrder = 0
     for (const category of mockData) {
         const createdCategory = await prisma.category.create({
             data: {
                 name: category.name,
                 panelId: navPanel.id,
+                userId: adminUser.id,
                 sortOrder: catSortOrder++
             }
         })
@@ -50,38 +94,24 @@ async function main() {
                     icon: site.icon,
                     visits: site.visits,
                     categoryId: createdCategory.id,
+                    userId: adminUser.id,
                     sortOrder: siteSortOrder++
                 }
             })
         }
     }
 
-    // 3. Create Default AI Config (Optional but helpful)
-    await prisma.systemConfig.create({
-        data: { key: 'AI_MODEL', value: 'glm-4-flash' }
+    // 4. Create Default AI Config
+    await prisma.systemConfig.upsert({
+        where: { key: 'AI_MODEL' },
+        update: {},
+        create: { key: 'AI_MODEL', value: 'glm-4-flash' }
     })
-    await prisma.systemConfig.create({
-        data: { key: 'AI_BASE_URL', value: 'https://open.bigmodel.cn/api/paas/v4' }
+    await prisma.systemConfig.upsert({
+        where: { key: 'AI_BASE_URL' },
+        update: {},
+        create: { key: 'AI_BASE_URL', value: 'https://open.bigmodel.cn/api/paas/v4' }
     })
-
-    // 4. Create Default Admin User
-    const existingUser = await prisma.user.findUnique({
-        where: { email: 'admin@navix.com' }
-    })
-
-    if (!existingUser) {
-        const hashedPassword = await bcrypt.hash('admin123', 10)
-        await prisma.user.create({
-            data: {
-                name: 'Admin',
-                email: 'admin@navix.com',
-                password: hashedPassword
-            }
-        })
-        console.log('Created admin user: admin@navix.com / admin123')
-    } else {
-        console.log('Admin user already exists.')
-    }
 
     console.log('Seeding finished.')
 }

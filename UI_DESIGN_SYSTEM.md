@@ -1,6 +1,6 @@
-# Navix UI 设计系统文档
+# Nivix UI 设计系统文档
 
-本文档记录了 Navix 项目的 UI 组件、配色方案和设计规范，供后续开发参考。
+本文档记录了 Nivix 项目的 UI 组件、配色方案和设计规范，供后续开发参考。
 
 ---
 
@@ -66,7 +66,7 @@ font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, 'He
 | 组件 | 用途 | 文件 |
 |------|------|------|
 | `CategoryEditModal` | 分类编辑/新建 | `src/components/CategoryEditModal.tsx` |
-| `SiteEditModal` | 站点编辑/新建 | `src/components/SiteEditModal.tsx` |
+| `SiteEditModal` | 网页编辑/新建 | `src/components/SiteEditModal.tsx` |
 | `PanelModal` | 版块编辑/新建 | `src/components/PanelModal.tsx` |
 | `ConfirmModal` | 确认操作弹窗 | `src/components/ConfirmModal.tsx` |
 | `ImportModal` | 书签导入 | `src/components/ImportModal.tsx` |
@@ -151,7 +151,7 @@ className="px-4 py-2 text-sm cursor-pointer transition-colors"
 
 ### 3.4 卡片组件
 
-**站点卡片 (SiteCard)：**
+**网页卡片 (SiteCard)：**
 ```tsx
 className="card-glow relative flex flex-col gap-3 p-4 rounded-lg"
 style={{

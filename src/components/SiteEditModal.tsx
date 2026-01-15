@@ -232,7 +232,7 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                         className="text-lg font-bold"
                         style={{ color: 'var(--color-text-primary)' }}
                     >
-                        {site ? '编辑站点' : '添加站点'}
+                        {site ? '编辑网页' : '添加网页'}
                     </h2>
                     <button
                         onClick={onClose}
@@ -289,15 +289,12 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                         </div>
                     </div>
 
-                    {/* 站点名称 + 所属分类并排 */}
+                    {/* 网页名称 + 所属分类并排 */}
                     <div className="flex gap-4">
-                        {/* 站点名称 */}
+                        {/* 网页名称 */}
                         <div className="flex-[2]">
-                            <label
-                                className="block text-sm font-medium mb-2"
-                                style={{ color: 'var(--color-text-secondary)' }}
-                            >
-                                站点名称 *
+                            <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
+                                网页名称
                             </label>
                             <input
                                 type="text"
@@ -309,7 +306,7 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                                     borderColor: 'var(--color-border)',
                                     color: 'var(--color-text-primary)'
                                 }}
-                                placeholder="请输入站点名称"
+                                placeholder="请输入网页名称"
                             />
                         </div>
 
@@ -385,7 +382,7 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                             className="block text-sm font-medium mb-2"
                             style={{ color: 'var(--color-text-secondary)' }}
                         >
-                            站点说明
+                            网页说明
                         </label>
                         <textarea
                             value={description}
@@ -397,7 +394,7 @@ export function SiteEditModal({ site, categories = [], defaultCategoryId, isOpen
                                 borderColor: 'var(--color-border)',
                                 color: 'var(--color-text-primary)'
                             }}
-                            placeholder="简短描述这个站点..."
+                            placeholder="简短描述这个网页..."
                         />
                     </div>
 

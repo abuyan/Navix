@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ToastProvider } from "@/components/Toast";
 import { BatchAIProvider } from "@/contexts/BatchAIContext";
+import { SessionProvider } from "next-auth/react";
+import { auth } from "@/auth";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,11 +21,12 @@ export const metadata: Metadata = {
   description: "AI 驱动的智能书签，懂收藏，更懂整理。",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -45,11 +48,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}
         style={{ backgroundColor: 'var(--color-bg-primary)' }}
       >
-        <ToastProvider>
-          <BatchAIProvider>
-            {children}
-          </BatchAIProvider>
-        </ToastProvider>
+        <SessionProvider session={session}>
+          <ToastProvider>
+            <BatchAIProvider>
+              {children}
+            </BatchAIProvider>
+          </ToastProvider>
+        </SessionProvider>
       </body>
     </html>
   );

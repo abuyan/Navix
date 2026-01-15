@@ -5,11 +5,16 @@ import { auth } from '@/auth';
 // 获取所有分类
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth();
     const { searchParams } = new URL(request.url);
     const panelId = searchParams.get('panelId');
 
+    const where: any = {};
+    if (panelId) where.panelId = panelId;
+    if (session?.user?.id) where.userId = session.user.id;
+
     const categories = await prisma.category.findMany({
-      where: panelId ? { panelId } : undefined,
+      where,
       orderBy: { sortOrder: 'asc' },
       include: {
         _count: {
@@ -32,7 +37,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -48,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     // 获取当前面板下最大排序值
     const maxCategory = await prisma.category.findFirst({
-      where: { panelId },
+      where: { panelId, userId: session.user.id },
       orderBy: { sortOrder: 'desc' }
     });
     const newSortOrder = sortOrder ?? (maxCategory?.sortOrder ?? 0) + 1;
@@ -58,7 +63,8 @@ export async function POST(request: NextRequest) {
         name,
         icon: icon || null,
         sortOrder: newSortOrder,
-        panelId
+        panelId,
+        userId: session.user.id
       }
     });
 

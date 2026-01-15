@@ -8,22 +8,60 @@ import { auth } from '@/auth';
 
 export default async function Home() {
   const session = await auth();
-  const panel = await prisma.panel.findFirst({
-    where: { slug: 'home' },
-  });
 
-  if (!panel) return <div>Panel not found</div>;
+  // Decide which user's data to show
+  let targetUserId: string | undefined;
 
-  // 获取所有 panels 用于导航
+  if (session?.user?.id) {
+    // 1. Logged in: Show My Dashboard
+    targetUserId = session.user.id;
+  } else {
+    // 2. Visitor: Show Admin's Public Profile (Official Template)
+    const adminUser = await prisma.user.findUnique({
+      where: { username: 'admin' }
+    });
+    if (adminUser) {
+      targetUserId = adminUser.id;
+    }
+  }
+
+  // If no target user found (e.g. no admin seeded yet), return empty
+  if (!targetUserId) {
+    return <div>Initializing... (Please seed database)</div>;
+  }
+
+  // Fetch Panels
+  // If logged in (My Dashboard), show all.
+  // If visitor (Admin Template), show only public.
+  const isVisitor = !session?.user;
+
   const allPanels = await prisma.panel.findMany({
+    where: {
+      userId: targetUserId,
+      ...(isVisitor ? { isPublic: true } : {}) // Visitors only see public panels
+    },
     orderBy: { sortOrder: 'asc' }
   });
 
+  if (allPanels.length === 0) {
+    // Edge case: Admin has no public panels or user has no panels (new user before onboarding?)
+    // New user should have cloned panels. 
+    // Admin should have seeded panels.
+    return <div className="text-center mt-20 text-gray-500">No content available.</div>;
+  }
+
+  // Use the first panel as default
+  const activePanel = allPanels[0];
+
   const categories = await prisma.category.findMany({
-    where: { panelId: panel.id },
+    where: {
+      panelId: activePanel.id,
+      userId: targetUserId
+    },
     include: {
       sites: {
         orderBy: [
+          { sortOrder: 'asc' }, // Maintain manual sort order
           { visits: 'desc' }
         ]
       }
@@ -33,5 +71,13 @@ export default async function Home() {
     }
   });
 
-  return <ClientWrapper initialCategories={categories} panelId={panel.id} panels={allPanels} user={session?.user} />;
+  return (
+    <ClientWrapper
+      initialCategories={categories}
+      panelId={activePanel.id}
+      panels={allPanels}
+      user={session?.user}
+      readOnly={isVisitor} // Visitors are read-only
+    />
+  );
 }

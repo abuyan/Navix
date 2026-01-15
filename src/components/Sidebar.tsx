@@ -210,19 +210,10 @@ export default function Sidebar({
                     </div>
                     {!isCollapsed && (
                         <div className={`flex flex-col ml-3 transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 flex-1'}`}>
-                            <span
-                                className="font-bold text-lg leading-tight"
-                                style={{ color: 'var(--color-text-primary)' }}
-                            >
-                                Nivix 灵犀导航
-                            </span>
-                            <span
-                                className="text-xs leading-tight mt-0.5 truncate max-w-[160px]"
-                                style={{ color: 'var(--color-text-secondary)' }}
-                                title="AI 驱动的智能书签，懂收藏，更懂整理。"
-                            >
-                                AI 驱动的智能书签
-                            </span>
+                            <div className="flex flex-col">
+                                <span className="font-bold text-base tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Nivix 灵犀书签</span>
+                                <span className="text-xs uppercase tracking-widest opacity-50 font-medium" style={{ color: 'var(--color-text-secondary)' }}>AI 驱动的智能书签</span>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -235,7 +226,9 @@ export default function Sidebar({
                         className="text-xs font-semibold px-3 mb-3 uppercase tracking-wider"
                         style={{ color: 'var(--color-text-tertiary)' }}
                     >
-                        分类导航 {isSaving && <span className="text-xs">(保存中...)</span>}
+                        <span className="text-xs font-bold uppercase tracking-widest px-2" style={{ color: 'var(--color-text-tertiary)' }}>
+                            书签分类
+                        </span> {isSaving && <span className="text-xs">(保存中...)</span>}
                     </div>
                 )}
 

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/auth';
 
 // 更新分类
 export async function PATCH(
@@ -7,12 +8,17 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json();
     const { name, icon, sortOrder, panelId } = body;
 
     const category = await prisma.category.update({
-      where: { id },
+      where: { id, userId: session.user.id },
       data: {
         ...(name && { name }),
         ...(icon !== undefined && { icon }),
@@ -37,16 +43,21 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
 
-    // 先删除该分类下的所有站点
+    // 先删除该分类下属于该用户的所有网页
     await prisma.site.deleteMany({
-      where: { categoryId: id }
+      where: { categoryId: id, userId: session.user.id }
     });
 
     // 再删除分类
     await prisma.category.delete({
-      where: { id }
+      where: { id, userId: session.user.id }
     });
 
     return NextResponse.json({ success: true });

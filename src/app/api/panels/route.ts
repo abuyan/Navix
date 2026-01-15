@@ -1,10 +1,17 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/auth';
 
-// 获取所有面板
+// Get User's Panels
 export async function GET() {
     try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const panels = await prisma.panel.findMany({
+            where: { userId: session.user.id },
             orderBy: { sortOrder: 'asc' },
         });
 
@@ -18,11 +25,16 @@ export async function GET() {
     }
 }
 
-// 创建新面板
+// Create New Panel
 export async function POST(request: NextRequest) {
     try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
-        const { name, icon, slug } = body;
+        const { name, icon, slug, isPublic } = body;
 
         if (!name) {
             return NextResponse.json(
@@ -31,8 +43,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 获取当前最大排序值
+        // Get sort order scoped to user
         const maxPanel = await prisma.panel.findFirst({
+            where: { userId: session.user.id },
             orderBy: { sortOrder: 'desc' }
         });
         const newSortOrder = (maxPanel?.sortOrder ?? 0) + 1;
@@ -42,13 +55,24 @@ export async function POST(request: NextRequest) {
                 name,
                 icon: icon || null,
                 slug: slug || null,
-                sortOrder: newSortOrder
+                sortOrder: newSortOrder,
+                userId: session.user.id,
+                isPublic: isPublic ?? false // Use provided value or default to private
             }
         });
 
         return NextResponse.json(panel);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating panel:', error);
+
+        // Handle Unique Constraint Violation (Slug)
+        if (error.code === 'P2002' && error.meta?.target?.includes('slug')) {
+            return NextResponse.json(
+                { error: '该路径标识 (Slug) 已被占用，请更换' },
+                { status: 409 }
+            );
+        }
+
         return NextResponse.json(
             { error: 'Failed to create panel' },
             { status: 500 }

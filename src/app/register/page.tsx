@@ -1,12 +1,12 @@
-import LoginForm from '@/components/auth/LoginForm';
+import RegisterForm from '@/components/auth/RegisterForm';
 import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-    title: '登录 - Nivix',
+    title: '注册 - Nivix',
 };
 
-export default function LoginPage() {
+export default function RegisterPage() {
     return (
         <main
             className="flex items-center justify-center min-h-screen p-4"
@@ -24,21 +24,21 @@ export default function LoginPage() {
                         className="text-2xl font-bold mb-2"
                         style={{ color: 'var(--color-text-primary)' }}
                     >
-                        Nivix
+                        加入 Nivix
                     </h1>
                     <p
                         className="text-sm"
                         style={{ color: 'var(--color-text-secondary)' }}
                     >
-                        请登录以管理导航内容
+                        创建您的个人专属导航
                     </p>
                 </div>
-                <LoginForm />
+                <RegisterForm />
 
                 <div className="mt-6 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    没有账号？{' '}
-                    <Link href="/register" className="hover:underline font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                        立即注册
+                    已有账号？{' '}
+                    <Link href="/login" className="hover:underline font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                        立即登录
                     </Link>
                 </div>
             </div>

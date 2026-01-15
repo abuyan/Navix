@@ -3,8 +3,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useToast } from '@/components/Toast';
 import TopNav from '@/components/TopNav';
-import Sidebar from '@/components/Sidebar';
-import { Plus, Edit2, Trash2, Layout, ExternalLink, ArrowLeft, ChevronUp, ChevronDown, Cpu, Save, CheckCircle2 } from 'lucide-react';
+
+import { Plus, Edit2, Trash2, Layout, ExternalLink, ArrowLeft, ChevronUp, ChevronDown, Cpu, Save, CheckCircle2, Settings, User, CreditCard, HardDrive, HelpCircle, Info, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import PanelModal from '@/components/PanelModal';
@@ -13,11 +13,14 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import AIModelModal, { AIModelConfig } from '@/components/AIModelModal';
 import { Power } from 'lucide-react';
 
+import { useSession } from 'next-auth/react';
+
 function SettingsContent() {
+    const { data: session, status } = useSession();
     const { showToast } = useToast();
     const searchParams = useSearchParams();
     const router = useRouter();
-    const activeTab = searchParams.get('tab') || 'panels';
+    const activeTab = searchParams.get('tab') || 'account';
 
     const [panels, setPanels] = useState<any[]>([]);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -34,6 +37,8 @@ function SettingsContent() {
     const [isAIModalOpen, setIsAIModalOpen] = useState(false);
     const [selectedAIModel, setSelectedAIModel] = useState<AIModelConfig | null>(null);
     const [activeAIModelId, setActiveAIModelId] = useState<string | null>(null);
+    const [deleteAIConfirmOpen, setDeleteAIConfirmOpen] = useState(false);
+    const [aiModelToDelete, setAiModelToDelete] = useState<string | null>(null);
 
     useEffect(() => {
         fetchPanels();
@@ -139,22 +144,24 @@ function SettingsContent() {
     };
 
     const toggleAIModel = (id: string) => {
+        // 设置指定模型为默认使用的模型
         const newModels = aiModels.map(m => ({
             ...m,
-            isActive: m.id === id ? !m.isActive : false // Toggle target, ensure others are off (single active) or allow turning off all?
-            // User requested "enable switch", implying purely "which one is active". 
-            // Usually we want at least one active, or none. Let's allow toggling OFF active one to disable AI features.
+            isActive: m.id === id
         }));
-
-        // Special logic: If we are turning ON a model, ensure others are OFF (handled above).
-
         saveAIConfigs(newModels);
     };
 
     const handleDeleteAIModel = (id: string) => {
-        if (confirm('确定要删除这个模型配置吗？')) {
-            const newModels = aiModels.filter(m => m.id !== id);
+        setAiModelToDelete(id);
+        setDeleteAIConfirmOpen(true);
+    };
+
+    const confirmDeleteAIModel = () => {
+        if (aiModelToDelete) {
+            const newModels = aiModels.filter(m => m.id !== aiModelToDelete);
             saveAIConfigs(newModels);
+            setAiModelToDelete(null);
         }
     };
 
@@ -173,7 +180,12 @@ function SettingsContent() {
         try {
             const res = await fetch('/api/panels');
             const data = await res.json();
-            setPanels(data);
+            if (Array.isArray(data)) {
+                setPanels(data);
+            } else {
+                console.warn('API returned non-array data:', data);
+                setPanels([]);
+            }
         } catch (err) {
             console.error(err);
         } finally {
@@ -246,69 +258,137 @@ function SettingsContent() {
         router.push(`/settings?${params.toString()}`);
     };
 
+    // 设置导航菜单项
+    const settingsMenuItems = [
+        { id: 'account', label: '账户', icon: User, description: '个人资料管理' },
+        { id: 'panels', label: '收藏夹', icon: Layout, description: '收藏夹管理' },
+        { id: 'ai', label: 'AI 配置', icon: Cpu, description: 'AI 模型配置' },
+        { id: 'subscription', label: '订阅', icon: CreditCard, badge: '即将推出' },
+        { id: 'backup', label: '备份', icon: HardDrive, badge: '即将推出' },
+        { id: 'help', label: '帮助', icon: HelpCircle, badge: '即将推出' },
+        { id: 'about', label: '关于', icon: Info },
+    ];
+
     return (
         <div className="flex min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
-            <Sidebar
-                categories={[]}
-                activeCategory=""
-                onCategoryChange={() => { }}
-                isCollapsed={sidebarCollapsed}
-                onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="hidden md:flex"
-            />
+            {/* 设置专属侧边栏 */}
+            <aside
+                className={`h-screen fixed left-0 top-0 flex flex-col z-40 hidden md:flex transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'w-[72px]' : 'w-64'}`}
+                style={{
+                    backgroundColor: 'var(--sidebar-bg)',
+                    borderRight: '1px solid var(--sidebar-border)'
+                }}
+            >
+                {/* Logo Area */}
+                <div
+                    className="h-16 flex items-center justify-center flex-shrink-0 transition-all duration-300"
+                    style={{ borderBottom: '1px solid var(--sidebar-border)' }}
+                >
+                    <div className={`flex items-center ${sidebarCollapsed ? '' : 'gap-3 px-6 w-full'}`}>
+                        <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0 border transition-all duration-300"
+                            style={{
+                                background: '#000',
+                                borderColor: 'rgba(255, 255, 255, 0.15)',
+                                color: '#fff'
+                            }}
+                        >
+                            N
+                        </div>
+                        {!sidebarCollapsed && (
+                            <div className="flex flex-col ml-3 transition-opacity duration-300 opacity-100 flex-1">
+                                <span className="font-bold text-base tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Nivix 灵犀书签</span>
+                                <span className="text-xs uppercase tracking-widest opacity-50 font-medium" style={{ color: 'var(--color-text-secondary)' }}>AI 驱动的智能书签</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 设置导航菜单 */}
+                <nav className={`flex-1 overflow-y-auto py-4 space-y-1 ${sidebarCollapsed ? 'px-3' : 'px-3'}`}>
+                    {settingsMenuItems.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = activeTab === item.id;
+
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => setTab(item.id)}
+                                className="w-full flex items-center rounded-lg text-sm font-medium transition-all duration-200"
+                                style={{
+                                    height: '44px',
+                                    padding: sidebarCollapsed ? '0' : '0 12px',
+                                    justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                                    gap: sidebarCollapsed ? '0' : '12px',
+                                    backgroundColor: isActive ? 'var(--color-accent-soft)' : 'transparent',
+                                    color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)'
+                                }}
+                                title={sidebarCollapsed ? item.label : undefined}
+                            >
+                                <Icon className="w-5 h-5 flex-shrink-0" />
+                                {!sidebarCollapsed && (
+                                    <>
+                                        <span className="flex-1 text-left">{item.label}</span>
+                                        {item.badge && (
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]">
+                                                {item.badge}
+                                            </span>
+                                        )}
+                                    </>
+                                )}
+                            </button>
+                        );
+                    })}
+                </nav>
+
+                {/* 收起/展开按钮 */}
+                <div
+                    className="p-3 flex-shrink-0"
+                    style={{ borderTop: '1px solid var(--sidebar-border)' }}
+                >
+                    <button
+                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                        title={sidebarCollapsed ? '展开菜单' : '收起菜单'}
+                        className="w-full flex items-center rounded-lg text-sm font-medium transition-all duration-200 hover:bg-[var(--color-bg-tertiary)]"
+                        style={{
+                            height: '44px',
+                            padding: sidebarCollapsed ? '0' : '0 12px',
+                            justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                            gap: sidebarCollapsed ? '0' : '12px',
+                            color: 'var(--color-text-tertiary)'
+                        }}
+                    >
+                        {sidebarCollapsed ? (
+                            <ChevronRight className="w-5 h-5 flex-shrink-0" />
+                        ) : (
+                            <>
+                                <ChevronLeft className="w-5 h-5 flex-shrink-0" />
+                                <span>收起菜单</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </aside>
 
             <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'md:ml-[72px]' : 'md:ml-64'}`}>
-                <TopNav sidebarCollapsed={sidebarCollapsed} panels={panels} />
+                <TopNav sidebarCollapsed={sidebarCollapsed} panels={panels} user={session?.user} authStatus={status} />
 
                 <main className="flex-1 p-6 md:px-10 md:pb-10 md:pt-24 max-w-4xl mx-auto w-full">
-                    <div className="flex items-center justify-between mb-8">
-                        <div>
-                            <h1 className="text-3xl font-bold">系统设置</h1>
-                        </div>
-                    </div>
-
-                    {/* Tab 切换逻辑 */}
-                    <div className="flex items-center gap-2 mb-6 p-1 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg w-fit">
-                        <button
-                            onClick={() => setTab('panels')}
-                            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'panels'
-                                ? 'bg-[var(--color-bg-primary)] shadow-sm text-[var(--color-accent)]'
-                                : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'
-                                }`}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Layout size={14} />
-                                导航管理
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => setTab('ai')}
-                            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'ai'
-                                ? 'bg-[var(--color-bg-primary)] shadow-sm text-[var(--color-accent)]'
-                                : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'
-                                }`}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Cpu size={14} />
-                                AI 配置
-                            </div>
-                        </button>
-                    </div>
-
                     <div className="space-y-6">
                         {activeTab === 'panels' && (
                             <>
+                                {/* 收藏夹管理 */}
                                 <section className="bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] overflow-hidden">
                                     <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <h2 className="font-bold">导航版块管理</h2>
+                                            <h2 className="font-bold">收藏夹管理</h2>
                                         </div>
                                         <button
                                             onClick={handleCreatePanel}
                                             className="btn-new-category group flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98]"
                                         >
                                             <Plus size={16} />
-                                            <span>新增版块</span>
+                                            <span>新增收藏夹</span>
                                         </button>
                                     </div>
 
@@ -325,6 +405,9 @@ function SettingsContent() {
                                                                 {panel.name}
                                                                 <span className="text-[var(--color-text-tertiary)] font-normal text-xs px-2 py-0.5 bg-[var(--color-bg-tertiary)] rounded-full">
                                                                     /{panel.slug || panel.id}
+                                                                </span>
+                                                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${panel.isPublic ? 'bg-green-500/10 text-green-500' : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]'}`}>
+                                                                    {panel.isPublic ? '已共享' : '私有'}
                                                                 </span>
                                                             </div>
                                                             <p className="text-sm text-[var(--color-text-secondary)] mt-1">
@@ -387,16 +470,10 @@ function SettingsContent() {
                                         )}
                                     </div>
                                 </section>
-
-                                <div className="bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg p-4 flex gap-3 text-sm text-[var(--color-text-secondary)]">
-                                    <Plus size={18} className="flex-shrink-0" />
-                                    <p>
-                                        <strong>提示：</strong> 您可以点击“新增版块”来创建顶部的不同导航视图。第一个版块通常是您的主页。
-                                    </p>
-                                </div>
                             </>
                         )}
 
+                        {/* AI 配置 */}
                         {activeTab === 'ai' && (
                             <>
                                 <section className="bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] overflow-hidden">
@@ -432,17 +509,23 @@ function SettingsContent() {
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-4">
-                                                        <div className="flex items-center gap-2" title="启用此模型">
-                                                            <span className={`text-sm ${model.isActive ? 'text-[var(--color-text-primary)] font-medium' : 'text-[var(--color-text-tertiary)]'}`}>
-                                                                {model.isActive ? '已开启' : '未开启'}
+                                                        {/* 当前使用标签或设为默认按钮 */}
+                                                        {model.isActive ? (
+                                                            <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 font-medium">
+                                                                当前使用
                                                             </span>
+                                                        ) : (
                                                             <button
-                                                                onClick={() => !model.isActive && toggleAIModel(model.id)}
-                                                                className={`w-10 h-6 rounded-full transition-colors relative ${model.isActive ? 'bg-[var(--color-text-secondary)] cursor-default' : 'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-border-hover)] cursor-pointer'}`}
+                                                                onClick={() => toggleAIModel(model.id)}
+                                                                className="text-xs px-3 py-1 rounded-full border transition-colors hover:bg-[var(--color-bg-tertiary)]"
+                                                                style={{
+                                                                    borderColor: 'var(--color-border)',
+                                                                    color: 'var(--color-text-secondary)'
+                                                                }}
                                                             >
-                                                                <div className={`absolute top-1 left-1 w-4 h-4 rounded-full transition-transform ${model.isActive ? 'translate-x-4 bg-white' : 'translate-x-0 bg-[var(--color-text-tertiary)]'}`} />
+                                                                设为默认
                                                             </button>
-                                                        </div>
+                                                        )}
 
                                                         <div className="w-px h-6 bg-[var(--color-border)] mx-2"></div>
 
@@ -475,19 +558,164 @@ function SettingsContent() {
                                 <div className="mt-6 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg p-4 flex gap-3 text-sm text-[var(--color-text-secondary)]">
                                     <Cpu size={18} className="flex-shrink-0 mt-0.5" />
                                     <p>
-                                        <strong>说明：</strong> 启用后的模型将用于自动识别站点的标题、描述和分类。建议使用各大模型厂商的 API (如智谱、DeepSeek、OpenAI)。
+                                        <strong>说明：</strong> 启用后的模型将用于自动识别网页的标题、描述和分类。建议使用各大模型厂商的 API (如智谱、DeepSeek、OpenAI)。
                                     </p>
                                 </div>
                             </>
                         )}
+
+                        {/* 账户设置 */}
+                        {activeTab === 'account' && (
+                            <>
+                                <section className="bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] overflow-hidden">
+                                    <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
+                                        <h2 className="font-bold">账户信息</h2>
+                                    </div>
+                                    <div className="p-6 space-y-6">
+                                        <div className="flex items-center gap-6">
+                                            <div className="w-20 h-20 rounded-full bg-[var(--color-bg-tertiary)] flex items-center justify-center text-2xl font-bold" style={{ color: 'var(--color-text-secondary)' }}>
+                                                {session?.user?.name?.[0]?.toUpperCase() || session?.user?.email?.[0]?.toUpperCase() || 'U'}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h3 className="text-lg font-semibold">{session?.user?.name || '用户'}</h3>
+                                                <p className="text-sm text-[var(--color-text-secondary)]">{session?.user?.email}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>用户名</label>
+                                                <input
+                                                    type="text"
+                                                    defaultValue={session?.user?.name || ''}
+                                                    className="w-full px-4 h-10 rounded-lg border outline-none text-sm"
+                                                    style={{
+                                                        backgroundColor: 'var(--color-bg-tertiary)',
+                                                        borderColor: 'var(--color-border)',
+                                                        color: 'var(--color-text-primary)'
+                                                    }}
+                                                    disabled
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>邮箱</label>
+                                                <input
+                                                    type="email"
+                                                    defaultValue={session?.user?.email || ''}
+                                                    className="w-full px-4 h-10 rounded-lg border outline-none text-sm"
+                                                    style={{
+                                                        backgroundColor: 'var(--color-bg-tertiary)',
+                                                        borderColor: 'var(--color-border)',
+                                                        color: 'var(--color-text-primary)'
+                                                    }}
+                                                    disabled
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <div className="bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg p-4 flex gap-3 text-sm text-[var(--color-text-secondary)]">
+                                    <Info size={18} className="flex-shrink-0" />
+                                    <p>账户信息编辑功能即将推出，敬请期待。</p>
+                                </div>
+                            </>
+                        )}
+
+                        {/* 订阅 */}
+                        {activeTab === 'subscription' && (
+                            <section className="bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] overflow-hidden">
+                                <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
+                                    <h2 className="font-bold">订阅计划</h2>
+                                </div>
+                                <div className="p-10 text-center">
+                                    <CreditCard size={48} className="mx-auto mb-4 text-[var(--color-text-tertiary)]" />
+                                    <h3 className="text-lg font-semibold mb-2">订阅功能即将推出</h3>
+                                    <p className="text-sm text-[var(--color-text-secondary)]">
+                                        我们正在努力开发订阅功能，敬请期待更多高级功能。
+                                    </p>
+                                </div>
+                            </section>
+                        )}
+
+                        {/* 备份 */}
+                        {activeTab === 'backup' && (
+                            <section className="bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] overflow-hidden">
+                                <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
+                                    <h2 className="font-bold">数据备份</h2>
+                                </div>
+                                <div className="p-10 text-center">
+                                    <HardDrive size={48} className="mx-auto mb-4 text-[var(--color-text-tertiary)]" />
+                                    <h3 className="text-lg font-semibold mb-2">备份功能即将推出</h3>
+                                    <p className="text-sm text-[var(--color-text-secondary)]">
+                                        我们正在开发数据备份与恢复功能，让您的数据更加安全。
+                                    </p>
+                                </div>
+                            </section>
+                        )}
+
+                        {/* 帮助 */}
+                        {activeTab === 'help' && (
+                            <section className="bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] overflow-hidden">
+                                <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
+                                    <h2 className="font-bold">帮助中心</h2>
+                                </div>
+                                <div className="p-10 text-center">
+                                    <HelpCircle size={48} className="mx-auto mb-4 text-[var(--color-text-tertiary)]" />
+                                    <h3 className="text-lg font-semibold mb-2">帮助文档即将推出</h3>
+                                    <p className="text-sm text-[var(--color-text-secondary)]">
+                                        我们正在编写详细的使用指南和常见问题解答，敬请期待。
+                                    </p>
+                                </div>
+                            </section>
+                        )}
+
+                        {/* 关于 */}
+                        {activeTab === 'about' && (
+                            <section className="bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] overflow-hidden">
+                                <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
+                                    <h2 className="font-bold">关于 Nivix</h2>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <div className="flex items-center gap-4">
+                                        <div
+                                            className="w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-2xl"
+                                            style={{ background: '#000' }}
+                                        >
+                                            N
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-bold">Nivix 灵犀书签</h3>
+                                            <p className="text-sm text-[var(--color-text-secondary)]">AI 驱动的智能书签管理工具</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-[var(--color-border)] space-y-3">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-[var(--color-text-secondary)]">版本</span>
+                                            <span>1.0.0</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-[var(--color-text-secondary)]">开发者</span>
+                                            <span>阿布</span>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-sm text-[var(--color-text-secondary)] pt-4 border-t border-[var(--color-border)]">
+                                        Nivix 是一款基于 AI 技术的智能书签管理工具，帮助您更高效地收藏、整理和发现优质网站。
+                                    </p>
+                                </div>
+                            </section>
+                        )}
                     </div>
                 </main>
-            </div>
+            </div >
 
             {/* Panel Modals */}
-            <PanelModal
+            < PanelModal
                 isOpen={isPanelModalOpen}
-                onClose={() => setIsPanelModalOpen(false)}
+                onClose={() => setIsPanelModalOpen(false)
+                }
                 onSuccess={fetchPanels}
                 panel={selectedPanel}
             />
@@ -500,8 +728,8 @@ function SettingsContent() {
                         handleDeletePanel(panelToDelete.id);
                     }
                 }}
-                title="删除版块"
-                message="确定要删除这个版块吗？这将不会删除其中的分类，但会导致分类失去所属版块。建议先手动转移分类。"
+                title="删除收藏夹"
+                message="确定要删除这个收藏夹吗？这将不会删除其中的分类，但会导致分类失去所属收藏夹。建议先手动转移分类。"
                 confirmText="删除"
                 cancelText="取消"
                 type="danger"
@@ -514,7 +742,18 @@ function SettingsContent() {
                 onSave={handleSaveAIModel}
                 model={selectedAIModel}
             />
-        </div>
+
+            <ConfirmModal
+                isOpen={deleteAIConfirmOpen}
+                onClose={() => setDeleteAIConfirmOpen(false)}
+                onConfirm={confirmDeleteAIModel}
+                title="删除 AI 模型"
+                message="确定要删除这个模型配置吗？删除后将无法恢复。"
+                confirmText="删除"
+                cancelText="取消"
+                type="danger"
+            />
+        </div >
     );
 }
 

@@ -33,20 +33,20 @@ export function parseBookmarkHTML(html: string): ParseResult {
 
     try {
         // 使用正则表达式解析 HTML（在 Node.js 环境中无 DOMParser）
-        // 匹配文件夹结构：<DT><H3...>文件夹名</H3> 后跟 <DL><p> 内容 </DL>
+        // 匹配收藏夹结构：<DT><H3...>收藏夹名</H3> 后跟 <DL><p> 内容 </DL>
 
-        // 首先提取所有书签链接及其父文件夹
+        // 首先提取所有书签链接及其父收藏夹
         const folderPattern = /<DT><H3[^>]*>([^<]+)<\/H3>\s*<DL><p>([\s\S]*?)<\/DL>/gi;
         const linkPattern = /<DT><A\s+HREF="([^"]+)"[^>]*(?:ICON="([^"]*)")?[^>]*>([^<]+)<\/A>/gi;
 
-        // 查找顶级书签（不在文件夹中的）
+        // 查找顶级书签（不在收藏夹中的）
         const topLevelBookmarks: ParsedBookmark[] = [];
 
-        // 递归解析文件夹
+        // 递归解析收藏夹
         function parseFolderContent(content: string, folderName: string): ParsedCategory | null {
             const bookmarks: ParsedBookmark[] = [];
 
-            // 提取该文件夹内的所有链接
+            // 提取该收藏夹内的所有链接
             let linkMatch;
             const linkRegex = /<DT><A\s+HREF="([^"]+)"(?:[^>]*ICON="([^"]*)")?[^>]*>([^<]+)<\/A>/gi;
 
@@ -67,7 +67,7 @@ export function parseBookmarkHTML(html: string): ParseResult {
             return null;
         }
 
-        // 解析所有顶级文件夹
+        // 解析所有顶级收藏夹
         let folderMatch;
         const processedContent = new Set<string>();
 
@@ -75,11 +75,11 @@ export function parseBookmarkHTML(html: string): ParseResult {
             const folderName = folderMatch[1].trim();
             const folderContent = folderMatch[2];
 
-            // 跳过书签栏等特殊文件夹的重复处理
+            // 跳过书签栏等特殊收藏夹的重复处理
             if (processedContent.has(folderContent)) continue;
             processedContent.add(folderContent);
 
-            // 检查是否有子文件夹
+            // 检查是否有子收藏夹
             const subFolderPattern = /<DT><H3[^>]*>([^<]+)<\/H3>\s*<DL><p>([\s\S]*?)<\/DL>/gi;
             let subMatch;
             let hasSubFolders = false;
@@ -96,7 +96,7 @@ export function parseBookmarkHTML(html: string): ParseResult {
                 }
             }
 
-            // 如果没有子文件夹，直接解析该文件夹
+            // 如果没有子收藏夹，直接解析该收藏夹
             if (!hasSubFolders) {
                 const category = parseFolderContent(folderContent, folderName);
                 if (category) {

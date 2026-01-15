@@ -250,7 +250,7 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete, us
                         <button
                             onClick={handleEditClick}
                             className="p-1 rounded-md transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center justify-center"
-                            title="编辑站点"
+                            title="编辑网页"
                         >
                             <Edit size={14} style={{ color: 'var(--color-text-tertiary)' }} />
                         </button>
@@ -258,7 +258,7 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete, us
                         <button
                             onClick={handleDeleteClick}
                             className="p-1 rounded-md transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center justify-center"
-                            title="删除站点"
+                            title="删除网页"
                         >
                             <Trash2 size={14} style={{ color: 'var(--color-text-tertiary)' }} />
                         </button>
@@ -388,10 +388,10 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete, us
                 isOpen={isDeleteConfirmOpen}
                 onClose={() => setIsDeleteConfirmOpen(false)}
                 onConfirm={handleConfirmDelete}
-                title="删除站点"
+                title="删除网页"
                 message={(
                     <span>
-                        确定要删除站点
+                        确定要删除网页
                         <span className="font-bold px-1 inline-block max-w-[200px] truncate align-bottom" title={site.title}>
                             “{site.title}”
                         </span>

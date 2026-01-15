@@ -16,16 +16,21 @@ import ImportModal from './ImportModal';
 import { SiteEditModal } from './SiteEditModal';
 import { useToast } from './Toast';
 import ConfirmModal from './ConfirmModal';
+import { useSession } from 'next-auth/react';
 import { useBatchAI } from '@/contexts/BatchAIContext';
+import { useSearchParams } from 'next/navigation';
 
 type CategoryWithSites = Category & { sites: Site[] };
 
-export default function ClientWrapper({ initialCategories, panelId, panels, user }: { initialCategories: CategoryWithSites[], panelId: string, panels: any[], user?: any }) {
+export default function ClientWrapper({ initialCategories, panelId, panels, user, readOnly = false }: { initialCategories: CategoryWithSites[], panelId: string, panels: any[], user?: any, readOnly?: boolean }) {
+    const { data: session, status } = useSession();
     const { showToast } = useToast();
     const { isBatchAnalyzing, batchProgress, startBatchAnalysis, subscribe } = useBatchAI();
+    const searchParams = useSearchParams();
 
     // Subscribe to background AI analysis updates
     useEffect(() => {
+        if (readOnly) return; // Don't subscribe if read-only
         const unsubscribe = subscribe((updatedSite) => {
             setCategories(prev => prev.map(cat => {
                 if (cat.id !== updatedSite.categoryId) return cat;
@@ -36,7 +41,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
             }));
         });
         return unsubscribe;
-    }, [subscribe]);
+    }, [subscribe, readOnly]);
 
     const [categories, setCategories] = useState(initialCategories);
     const initialId = categories.length > 0 ? categories[0].id : '';
@@ -50,7 +55,22 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
     const [sortBy, setSortBy] = useState<SortBy>('visits');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
     const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+    const [aiConfigured, setAiConfigured] = useState(false);
 
+    // 处理跨收藏夹定位逻辑 (从 URL 参数获取 siteId)
+    useEffect(() => {
+        const siteId = searchParams.get('siteId');
+        if (siteId) {
+            // 在所有分类中查找该网站
+            for (const cat of categories) {
+                const site = cat.sites.find(s => s.id === siteId);
+                if (site) {
+                    scrollToSite(siteId, cat.id);
+                    break;
+                }
+            }
+        }
+    }, [searchParams, categories]);
     // Removed local isBatchAnalyzing and batchProgress state
     const isScrollingRef = useRef(false);
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -64,18 +84,6 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
             isScrollingRef.current = false;
         }, 1000);
     };
-
-    // 拍平所有站点数据用于搜索
-    const searchableSites: SearchResult[] = categories.flatMap(cat =>
-        cat.sites.map(site => ({
-            id: site.id,
-            title: site.title,
-            description: site.description,
-            url: site.url,
-            categoryId: cat.id,
-            categoryName: cat.name
-        }))
-    );
 
     const scrollToSite = (siteId: string, categoryId: string) => {
         // 首先切换到对应的分类（更新侧边栏激活状态）
@@ -97,18 +105,10 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                 element.classList.add('search-highlight');
                 setTimeout(() => element.classList.remove('search-highlight'), 2000);
             } else {
-                // 如果找不到具体的站点元素（可能在尚未渲染的分类中），就滚到分类
+                // 如果找不到具体的网页元素（可能在尚未渲染的分类中），就滚到分类
                 document.getElementById(categoryId)?.scrollIntoView({ behavior: 'smooth' });
             }
         }, 100);
-    };
-
-    const handleSearchResultSelect = (result: SearchResult) => {
-        scrollToSite(result.id, result.categoryId);
-    };
-
-    const handleSearchResultFocus = (result: SearchResult) => {
-        scrollToSite(result.id, result.categoryId);
     };
 
     const handleConfirmClearEmpty = async () => {
@@ -143,6 +143,20 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
     };
 
     useEffect(() => {
+        // Check AI config status
+        const checkAIStatus = async () => {
+            try {
+                const res = await fetch('/api/ai/status');
+                const data = await res.json();
+                setAiConfigured(data.configured);
+            } catch (e) {
+                setAiConfigured(false);
+            }
+        };
+        if (user) checkAIStatus();
+    }, [user, isImporting, isAddingSite]); // Re-check when dialogs close (settings might change)
+
+    useEffect(() => {
         if (categories.length === 0) return;
 
         const observer = new IntersectionObserver(
@@ -170,13 +184,13 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
         <DndProvider>
             {/* Sidebar (Desktop) - Fixed position, left side */}
             <Sidebar
-                user={user}
+                user={readOnly ? undefined : user}
                 categories={categories}
                 activeCategory={activeCategory}
                 onCategoryChange={handleCategoryChange}
                 isCollapsed={sidebarCollapsed}
                 onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-                onCategoriesReorder={(reorderedCategories) => {
+                onCategoriesReorder={readOnly ? undefined : (reorderedCategories) => {
                     // 合并新顺序和原有的 sites 数据
                     const newCategories: CategoryWithSites[] = reorderedCategories.map(cat => {
                         const existingCategory = categories.find(c => c.id === cat.id);
@@ -202,7 +216,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                     className="font-bold text-lg"
                     style={{ color: 'var(--color-text-primary)' }}
                 >
-                    Nivix 灵犀导航
+                    Nivix 灵犀书签
                 </span>
                 <div className="flex items-center gap-2">
                     <ThemeToggle />
@@ -249,11 +263,12 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                 {/* Top Navigation (Desktop) - Sticky inside content wrapper */}
                 <TopNav
                     sidebarCollapsed={sidebarCollapsed}
-                    searchResults={searchableSites}
-                    onResultSelect={handleSearchResultSelect}
-                    onResultFocus={handleSearchResultFocus}
+                    activePanelId={panelId}
                     panels={panels}
                     user={user}
+                    authStatus={status === 'loading' ? 'loading' : (session ? 'authenticated' : 'unauthenticated')}
+                    onResultSelect={(result) => scrollToSite(result.id, result.categoryId)}
+                    onResultFocus={(result) => scrollToSite(result.id, result.categoryId)}
                 />
 
                 {/* Main Content Area */}
@@ -263,8 +278,8 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                 >
                     {/* Add padding for TopNav on desktop, for mobile header on mobile */}
                     <div className="max-w-full mx-auto px-4 sm:px-10 pt-24 md:pt-24 pb-8 space-y-6 min-h-screen">
-                        {/* 页面工具栏 - Only show if user is authenticated (hide completely for guests) */}
-                        {user && (
+                        {/* 页面工具栏 - Only show if user is authenticated AND not read-only */}
+                        {user && !readOnly && (
                             <PageToolbar
                                 user={user}
                                 onAddCategory={() => setIsCreatingCategory(true)}
@@ -276,6 +291,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                                 onClearEmpty={() => setIsClearConfirmOpen(true)}
                                 sortBy={sortBy}
                                 sortOrder={sortOrder}
+                                aiConfigured={aiConfigured}
                                 onSortChange={(newSortBy, newSortOrder) => {
                                     setSortBy(newSortBy);
                                     setSortOrder(newSortOrder);
@@ -291,7 +307,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                                     className="scroll-mt-24"
                                 >
                                     <CategoryTitle
-                                        user={user}
+                                        user={readOnly ? undefined : user}
                                         category={{
                                             ...category,
                                             _count: { sites: category.sites.length }
@@ -305,7 +321,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                                                 // 如果 panelId 变化了，说明分类被移到了其他版块，移除当前视图中的分类
                                                 if (data.panelId && data.panelId !== panelId) {
                                                     setCategories(prev => prev.filter(c => c.id !== id));
-                                                    showToast('分类已移动到其他版块', 'success');
+                                                    showToast('分类已移动到其他收藏夹', 'success');
                                                     return;
                                                 }
                                                 // 局部更新状态，避免 window.location.reload() 导致的页面跳动和闪烁
@@ -359,10 +375,10 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                                             .map((site) => (
                                                 <div key={site.id} id={`site-${site.id}`}>
                                                     <SiteCard
-                                                        user={user}
+                                                        user={readOnly ? undefined : user}
                                                         site={site}
                                                         onUpdate={(updatedSite) => {
-                                                            // 局部更新站点状态并重排序
+                                                            // 局部更新网页状态并重排序
                                                             setCategories(prev => {
                                                                 let newCategories = [...prev];
                                                                 const oldCategory = prev.find(cat => cat.sites.some(s => s.id === updatedSite.id));
@@ -386,7 +402,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                                                                     }));
                                                                 }
 
-                                                                // 仅按点击量重新排序站点
+                                                                // 仅按点击量重新排序网页
                                                                 return newCategories.map(cat => ({
                                                                     ...cat,
                                                                     sites: [...cat.sites].sort((a, b) => (b.visits || 0) - (a.visits || 0))
@@ -395,7 +411,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                                                         }}
                                                         categories={categories.map(c => ({ id: c.id, name: c.name }))}
                                                         onDelete={(id) => {
-                                                            // 局部从状态中移除站点
+                                                            // 局部从状态中移除网页
                                                             setCategories(prev => prev.map(cat => ({
                                                                 ...cat,
                                                                 sites: cat.sites.filter(s => s.id !== id)
@@ -409,15 +425,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                             ))}
                         </div>
 
-                        <footer
-                            className="mt-20 pt-8 pb-8 text-center text-xs"
-                            style={{
-                                borderTop: '1px solid var(--color-border)',
-                                color: 'var(--color-text-tertiary)'
-                            }}
-                        >
-                            <p>© {new Date().getFullYear()} Nivix. Designed with layered shadows & dark mode.</p>
-                        </footer>
+
                     </div>
                 </main>
             </div>
@@ -475,7 +483,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                 panelId={panelId}
                 onSuccess={() => window.location.reload()}
             />
-            {/* 添加站点弹窗 */}
+            {/* 添加网页弹窗 */}
             <SiteEditModal
                 isOpen={isAddingSite}
                 categories={categories.map(c => ({ id: c.id, name: c.name }))}
@@ -489,11 +497,11 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                         });
                         if (!response.ok) throw new Error('Failed to create site');
                         const newSite = await response.json();
-                        // 刷新页面以显示新站点
+                        // 刷新页面以显示新书签
                         window.location.reload();
                     } catch (error) {
                         console.error('Failed to add site:', error);
-                        showToast('添加站点失败', 'error');
+                        showToast('添加网页失败', 'error');
                     }
                 }}
             />
@@ -503,7 +511,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                 onClose={() => setIsClearConfirmOpen(false)}
                 onConfirm={handleConfirmClearEmpty}
                 title="清理空分类"
-                message="确定要删除当前版块下所有没有站点的空分类吗？此操作无法撤销。"
+                message="确定要删除当前版块下所有没有网页的空分类吗？此操作无法撤销。"
                 confirmText="清理"
                 cancelText="取消"
                 type="warning"
