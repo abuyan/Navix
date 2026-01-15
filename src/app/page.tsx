@@ -1,11 +1,13 @@
 import { prisma } from '@/lib/prisma';
 import ClientWrapper from '@/components/ClientWrapper';
+import { auth } from '@/auth';
 
 // Use ISR (Incremental Static Regeneration) - revalidate every 60 seconds
 // This caches the page but still shows updated data within 60s
 // export const revalidate = 60;
 
 export default async function Home() {
+  const session = await auth();
   const panel = await prisma.panel.findFirst({
     where: { slug: 'home' },
   });
@@ -31,5 +33,5 @@ export default async function Home() {
     }
   });
 
-  return <ClientWrapper initialCategories={categories} panelId={panel.id} panels={allPanels} />;
+  return <ClientWrapper initialCategories={categories} panelId={panel.id} panels={allPanels} user={session?.user} />;
 }

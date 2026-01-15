@@ -5,21 +5,12 @@ import { Sun, Moon } from 'lucide-react';
 
 export default function ThemeToggle() {
     const [isDark, setIsDark] = useState(false);
-    const [mounted, setMounted] = useState(false);
 
-    // Check for saved preference or system preference on mount
+    // Initial check for theme
     useEffect(() => {
-        setMounted(true);
-        const savedTheme = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-            setIsDark(true);
-            document.documentElement.classList.add('dark');
-        } else {
-            setIsDark(false);
-            document.documentElement.classList.remove('dark');
-        }
+        // Check if dark mode is actually active on mount
+        const isDarkMode = document.documentElement.classList.contains('dark');
+        setIsDark(isDarkMode);
     }, []);
 
     const toggleTheme = () => {
@@ -35,13 +26,6 @@ export default function ThemeToggle() {
         }
     };
 
-    // Prevent hydration mismatch
-    if (!mounted) {
-        return (
-            <button className="p-2 rounded-lg bg-tertiary animate-pulse w-9 h-9" />
-        );
-    }
-
     return (
         <button
             onClick={toggleTheme}
@@ -50,12 +34,10 @@ export default function ThemeToggle() {
                 color: 'var(--color-text-secondary)',
             }}
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            suppressHydrationWarning
         >
-            {isDark ? (
-                <Sun className="w-5 h-5" />
-            ) : (
-                <Moon className="w-5 h-5" />
-            )}
+            <Sun className="w-5 h-5 hidden dark:block" />
+            <Moon className="w-5 h-5 block dark:hidden" />
         </button>
     );
 }

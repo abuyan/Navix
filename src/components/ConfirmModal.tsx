@@ -1,4 +1,4 @@
-import { X, AlertTriangle } from 'lucide-react';
+import { X, AlertTriangle, Info } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 

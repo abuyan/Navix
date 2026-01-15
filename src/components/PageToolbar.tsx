@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, Upload, BarChart2, Type, Link } from 'lucide-react';
+import { Plus, Upload, BarChart2, Type, Link, Trash2, Sparkles, Loader2 } from 'lucide-react';
 
 export type SortBy = 'name' | 'visits';
 export type SortOrder = 'asc' | 'desc';
@@ -9,49 +9,93 @@ interface PageToolbarProps {
     onAddCategory: () => void;
     onAddSite: () => void;
     onImport: () => void;
+    onClearEmpty: () => void;
+    onBatchAI: () => void;
+    isBatchAnalyzing: boolean;
+    batchProgress?: string;
     sortBy: SortBy;
     sortOrder: SortOrder;
     onSortChange: (sortBy: SortBy, sortOrder: SortOrder) => void;
+    user?: any; // Add user prop
 }
 
-export default function PageToolbar({ onAddCategory, onAddSite, onImport, sortBy, sortOrder, onSortChange }: PageToolbarProps) {
+export default function PageToolbar({ onAddCategory, onAddSite, onImport, onClearEmpty, onBatchAI, isBatchAnalyzing, batchProgress, sortBy, sortOrder, onSortChange, user }: PageToolbarProps) {
     return (
         <div className="flex items-center justify-between mb-8">
-            {/* 左侧：操作按钮 */}
+            {/* 左侧：操作按钮 - Only show if user is authenticated */}
             <div className="flex items-center gap-3">
-                <button
-                    onClick={onAddCategory}
-                    className="btn-new-category group flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98]"
-                >
-                    <Plus size={16} />
-                    <span>新建分类</span>
-                </button>
+                {user && (
+                    <>
+                        <button
+                            onClick={onAddCategory}
+                            className="btn-new-category group flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                            <Plus size={16} />
+                            <span>新建分类</span>
+                        </button>
 
-                <button
-                    onClick={onAddSite}
-                    className="flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98] hover:bg-[var(--color-bg-tertiary)]"
-                    style={{
-                        borderColor: 'var(--color-border)',
-                        color: 'var(--color-text-secondary)',
-                        backgroundColor: 'transparent'
-                    }}
-                >
-                    <Link size={16} />
-                    <span>添加站点</span>
-                </button>
+                        <button
+                            onClick={onAddSite}
+                            className="flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98] hover:bg-[var(--color-bg-tertiary)]"
+                            style={{
+                                borderColor: 'var(--color-border)',
+                                color: 'var(--color-text-secondary)',
+                                backgroundColor: 'transparent'
+                            }}
+                        >
+                            <Link size={16} />
+                            <span>添加站点</span>
+                        </button>
 
-                <button
-                    onClick={onImport}
-                    className="flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98] hover:bg-[var(--color-bg-tertiary)]"
-                    style={{
-                        borderColor: 'var(--color-border)',
-                        color: 'var(--color-text-secondary)',
-                        backgroundColor: 'transparent'
-                    }}
-                >
-                    <Upload size={16} />
-                    <span>导入书签</span>
-                </button>
+                        <button
+                            onClick={onImport}
+                            className="flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98] hover:bg-[var(--color-bg-tertiary)]"
+                            style={{
+                                borderColor: 'var(--color-border)',
+                                color: 'var(--color-text-secondary)',
+                                backgroundColor: 'transparent'
+                            }}
+                        >
+                            <Upload size={16} />
+                            <span>导入书签</span>
+                        </button>
+
+                        <button
+                            onClick={onBatchAI}
+                            disabled={isBatchAnalyzing}
+                            className={`flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98] hover:bg-[var(--color-bg-tertiary)] ${isBatchAnalyzing ? 'btn-ai-active opacity-100 cursor-not-allowed' : ''}`}
+                            style={{
+                                borderColor: 'var(--color-border)',
+                                color: 'var(--color-text-secondary)',
+                                backgroundColor: 'transparent',
+                                minWidth: '130px', // Ensure button doesn't jump too much in width
+                                justifyContent: 'center'
+                            }}
+                            title="批量 AI 分析"
+                        >
+                            {isBatchAnalyzing ? (
+                                <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                                <Sparkles size={16} />
+                            )}
+                            <span>{isBatchAnalyzing ? (batchProgress || '整理中...') : 'AI 整理'}</span>
+                        </button>
+
+                        <button
+                            onClick={onClearEmpty}
+                            className="flex items-center gap-2 px-4 h-9 rounded-lg font-medium transition-all text-sm border hover:scale-[1.02] active:scale-[0.98] hover:bg-[var(--color-bg-tertiary)] hover:text-red-500 hover:border-red-200 dark:hover:border-red-900/30"
+                            style={{
+                                borderColor: 'var(--color-border)',
+                                color: 'var(--color-text-secondary)',
+                                backgroundColor: 'transparent'
+                            }}
+                            title="清除所有空分类"
+                        >
+                            <Trash2 size={16} />
+                            <span>清理空分类</span>
+                        </button>
+                    </>
+                )}
             </div>
 
             {/* 右侧：分段排序控制 */}

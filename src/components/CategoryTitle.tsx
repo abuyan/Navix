@@ -21,9 +21,10 @@ interface CategoryTitleProps {
   onDeleteCategory?: (id: string) => void;
   panels?: { id: string; name: string }[];  // 可用版块列表
   currentPanelId?: string;  // 当前版块 ID
+  user?: any; // Add user prop
 }
 
-export function CategoryTitle({ category, categories, onEditComplete, onAddSiteComplete, onDeleteCategory, panels = [], currentPanelId }: CategoryTitleProps) {
+export function CategoryTitle({ category, categories, onEditComplete, onAddSiteComplete, onDeleteCategory, panels = [], currentPanelId, user }: CategoryTitleProps) {
   const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingSite, setIsAddingSite] = useState(false);
@@ -78,12 +79,12 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
           {/* 标题 */}
           <div
             className="relative"
-            onDoubleClick={() => setIsEditing(true)}
+            onDoubleClick={() => user && setIsEditing(true)}
           >
             <h2
-              className="text-sm font-bold cursor-text hover:bg-[var(--color-bg-tertiary)] px-1 rounded transition-colors"
+              className={`text-sm font-bold px-1 rounded transition-colors ${user ? 'cursor-text hover:bg-[var(--color-bg-tertiary)]' : ''}`}
               style={{ color: 'var(--color-text-primary)' }}
-              title="双击编辑"
+              title={user ? "双击编辑" : undefined}
             >
               {category.name}
             </h2>
@@ -101,14 +102,16 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
             {category._count.sites}
           </span>
 
-          {/* 添加站点按钮 */}
-          <button
-            onClick={() => setIsAddingSite(true)}
-            className="p-1 rounded-md hover:bg-[var(--color-bg-tertiary)] transition-colors group/btn"
-            title="添加站点"
-          >
-            <Plus size={14} className="text-[var(--color-text-tertiary)] group-hover/btn:text-[var(--color-accent)]" />
-          </button>
+          {/* 添加站点按钮 - Only show if user is authenticated */}
+          {user && (
+            <button
+              onClick={() => setIsAddingSite(true)}
+              className="p-1 rounded-md hover:bg-[var(--color-bg-tertiary)] transition-colors group/btn"
+              title="添加站点"
+            >
+              <Plus size={14} className="text-[var(--color-text-tertiary)] group-hover/btn:text-[var(--color-accent)]" />
+            </button>
+          )}
         </div>
       </div>
 

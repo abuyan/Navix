@@ -1,11 +1,13 @@
 import { prisma } from '@/lib/prisma';
 import ClientWrapper from '@/components/ClientWrapper';
 import { notFound } from 'next/navigation';
+import { auth } from '@/auth';
 
 export const revalidate = 60;
 
 export default async function PanelPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
+    const session = await auth();
 
     const panel = await prisma.panel.findFirst({
         where: {
@@ -39,5 +41,5 @@ export default async function PanelPage({ params }: { params: Promise<{ slug: st
         }
     });
 
-    return <ClientWrapper initialCategories={categories} panelId={panel.id} panels={allPanels} />;
+    return <ClientWrapper initialCategories={categories} panelId={panel.id} panels={allPanels} user={session?.user} />;
 }

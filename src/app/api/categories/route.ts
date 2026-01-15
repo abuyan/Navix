@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/auth';
 
 // 获取所有分类
 export async function GET(request: NextRequest) {
@@ -30,6 +31,11 @@ export async function GET(request: NextRequest) {
 // 创建新分类
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { name, icon, sortOrder, panelId } = body;
 

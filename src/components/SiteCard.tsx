@@ -7,7 +7,7 @@ import { useToast } from './Toast';
 import { SiteEditModal } from './SiteEditModal';
 import { ConfirmModal } from './ConfirmModal';
 
-export default function SiteCard({ site, categories = [], onUpdate, onDelete }: { site: Site; categories?: { id: string; name: string }[]; onUpdate?: (updatedSite: Site) => void; onDelete?: (id: string) => void }) {
+export default function SiteCard({ site, categories = [], onUpdate, onDelete, user }: { site: Site; categories?: { id: string; name: string }[]; onUpdate?: (updatedSite: Site) => void; onDelete?: (id: string) => void; user?: any }) {
     const { showToast } = useToast();
     const cardRef = useRef<HTMLDivElement>(null);
     const [glarePosition, setGlarePosition] = useState({ x: 0, y: 0, opacity: 0 });
@@ -238,30 +238,32 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete }: 
                 />
 
 
-                {/* 操作按钮组 - 极简透明样式 */}
-                <div
-                    className="absolute top-2.5 right-2 flex items-center opacity-0 group-hover:opacity-100 transition-all duration-200"
-                    style={{
-                        zIndex: 50,
-                        transform: 'translateZ(30px)'
-                    }}
-                >
-                    <button
-                        onClick={handleEditClick}
-                        className="p-1 rounded-md transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center justify-center"
-                        title="编辑站点"
+                {/* 操作按钮组 - 极简透明样式 - Only show if user is authenticated */}
+                {user && (
+                    <div
+                        className="absolute top-2.5 right-2 flex items-center opacity-0 group-hover:opacity-100 transition-all duration-200"
+                        style={{
+                            zIndex: 50,
+                            transform: 'translateZ(30px)'
+                        }}
                     >
-                        <Edit size={14} style={{ color: 'var(--color-text-tertiary)' }} />
-                    </button>
+                        <button
+                            onClick={handleEditClick}
+                            className="p-1 rounded-md transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center justify-center"
+                            title="编辑站点"
+                        >
+                            <Edit size={14} style={{ color: 'var(--color-text-tertiary)' }} />
+                        </button>
 
-                    <button
-                        onClick={handleDeleteClick}
-                        className="p-1 rounded-md transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center justify-center"
-                        title="删除站点"
-                    >
-                        <Trash2 size={14} style={{ color: 'var(--color-text-tertiary)' }} />
-                    </button>
-                </div>
+                        <button
+                            onClick={handleDeleteClick}
+                            className="p-1 rounded-md transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center justify-center"
+                            title="删除站点"
+                        >
+                            <Trash2 size={14} style={{ color: 'var(--color-text-tertiary)' }} />
+                        </button>
+                    </div>
+                )}
 
                 <a
                     href={site.url}

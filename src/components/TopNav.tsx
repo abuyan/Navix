@@ -24,7 +24,8 @@ export default function TopNav({
     onResultSelect,
     onResultFocus,
     activePanelId, // New prop to identify current panel
-    panels = [] // New prop: panels data from server
+    panels = [], // New prop: panels data from server
+    user // New prop: current user
 }: {
     sidebarCollapsed?: boolean;
     searchResults?: SearchResult[];
@@ -32,6 +33,7 @@ export default function TopNav({
     onResultFocus?: (result: SearchResult) => void;
     activePanelId?: string;
     panels?: any[];
+    user?: any;
 }) {
     const pathname = usePathname();
     const router = useRouter();
@@ -151,7 +153,9 @@ export default function TopNav({
             <header
                 className={`fixed top-0 right-0 z-50 h-16 flex items-center justify-between px-6 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'md:left-[72px]' : 'md:left-64'} hidden md:flex`}
                 style={{
-                    backgroundColor: 'var(--color-bg-primary)',
+                    backgroundColor: 'color-mix(in srgb, var(--color-bg-primary), transparent 15%)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
                     borderBottom: '1px solid var(--color-border)'
                 }}
             >
@@ -317,80 +321,111 @@ export default function TopNav({
                     {/* 主题切换 */}
                     <ThemeToggle />
 
-                    {/* 设置按钮 */}
-                    <div className="relative">
-                        <button
-                            onClick={() => setSettingsOpen(!settingsOpen)}
-                            className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all duration-200 hover:bg-[var(--color-bg-tertiary)]"
-                            style={{ color: 'var(--color-text-secondary)' }}
-                        >
-                            <Settings className="w-4 h-4" />
-                            <span className="hidden lg:inline">设置</span>
-                            <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${settingsOpen ? 'rotate-180' : ''}`} />
-                        </button>
+                    {/* 设置按钮 / 登录按钮 */}
+                    {user ? (
+                        <div className="relative">
+                            <button
+                                onClick={() => setSettingsOpen(!settingsOpen)}
+                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all duration-200 hover:bg-[var(--color-bg-tertiary)]"
+                                style={{ color: 'var(--color-text-secondary)' }}
+                            >
+                                <Settings className="w-4 h-4" />
+                                <span className="hidden lg:inline">设置</span>
+                                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${settingsOpen ? 'rotate-180' : ''}`} />
+                            </button>
 
-                        {/* 设置下拉菜单 */}
-                        {settingsOpen && (
-                            <>
-                                <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={() => setSettingsOpen(false)}
-                                />
-                                <div
-                                    className="absolute right-0 top-full mt-2 w-48 py-2 rounded-xl z-50"
-                                    style={{
-                                        backgroundColor: 'var(--color-bg-secondary)',
-                                        border: '1px solid var(--color-border)',
-                                        boxShadow: 'var(--shadow-lg)'
-                                    }}
-                                >
-                                    <button
-                                        onClick={handleOpenPanelModal}
-                                        className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
-                                        style={{ color: 'var(--color-text-primary)' }}
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                        新增导航
-                                    </button>
-                                    <Link
-                                        href="/settings?tab=panels"
-                                        className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
-                                        style={{ color: 'var(--color-text-primary)' }}
-                                        onClick={() => setSettingsOpen(false)}
-                                    >
-                                        <Layout className="w-4 h-4" />
-                                        导航管理
-                                    </Link>
-                                    <Link
-                                        href="/settings?tab=ai"
-                                        className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
-                                        style={{ color: 'var(--color-text-primary)' }}
-                                        onClick={() => setSettingsOpen(false)}
-                                    >
-                                        <Cpu className="w-4 h-4" />
-                                        AI 配置
-                                    </Link>
+                            {/* 设置下拉菜单 */}
+                            {settingsOpen && (
+                                <>
                                     <div
-                                        className="my-2 mx-3 h-px"
-                                        style={{ backgroundColor: 'var(--color-border)' }}
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setSettingsOpen(false)}
                                     />
-                                    <button
-                                        className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)]"
-                                        style={{ color: 'var(--color-text-tertiary)' }}
+                                    <div
+                                        className="absolute right-0 top-full mt-2 w-48 py-2 rounded-xl z-50"
+                                        style={{
+                                            backgroundColor: 'var(--color-bg-secondary)',
+                                            border: '1px solid var(--color-border)',
+                                            boxShadow: 'var(--shadow-lg)'
+                                        }}
                                     >
-                                        关于 Navix
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                                        <div className="px-4 py-2 text-xs font-semibold opacity-50 border-b mb-1" style={{ borderColor: 'var(--color-border)' }}>
+                                            {user.name || user.email || 'Admin'}
+                                        </div>
+                                        <button
+                                            onClick={handleOpenPanelModal}
+                                            className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
+                                            style={{ color: 'var(--color-text-primary)' }}
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            新增导航
+                                        </button>
+                                        <Link
+                                            href="/settings?tab=panels"
+                                            className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
+                                            style={{ color: 'var(--color-text-primary)' }}
+                                            onClick={() => setSettingsOpen(false)}
+                                        >
+                                            <Layout className="w-4 h-4" />
+                                            导航管理
+                                        </Link>
+                                        <Link
+                                            href="/settings?tab=ai"
+                                            className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
+                                            style={{ color: 'var(--color-text-primary)' }}
+                                            onClick={() => setSettingsOpen(false)}
+                                        >
+                                            <Cpu className="w-4 h-4" />
+                                            AI 配置
+                                        </Link>
+                                        <div
+                                            className="my-2 mx-3 h-px"
+                                            style={{ backgroundColor: 'var(--color-border)' }}
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                import('@/lib/actions').then(mod => mod.handleSignOut());
+                                            }}
+                                            className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
+                                            style={{ color: 'var(--color-text-primary)' }}
+                                        >
+                                            退出登录
+                                        </button>
+                                        <div
+                                            className="my-2 mx-3 h-px"
+                                            style={{ backgroundColor: 'var(--color-border)' }}
+                                        />
+                                        <button
+                                            className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bg-tertiary)]"
+                                            style={{ color: 'var(--color-text-tertiary)' }}
+                                        >
+                                            关于 Nivix
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    ) : (
+                        /* 未登录：直接显示登录按钮 */
+                        <Link
+                            href="/login"
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:bg-[var(--color-bg-tertiary)]"
+                            style={{
+                                color: 'var(--color-text-primary)',
+                                border: '1px solid var(--color-border)'
+                            }}
+                        >
+                            <span>登录</span>
+                        </Link>
+                    )}
                 </div>
-            </header>
+            </header >
 
             {/* 新增版块弹窗 */}
-            <PanelModal
+            < PanelModal
                 isOpen={isPanelModalOpen}
-                onClose={() => setIsPanelModalOpen(false)}
+                onClose={() => setIsPanelModalOpen(false)
+                }
                 onSuccess={() => window.location.reload()}
             />
         </>

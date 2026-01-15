@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ToastProvider } from "@/components/Toast";
+import { BatchAIProvider } from "@/contexts/BatchAIContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Navix - Your Navigation Hub",
-  description: "A curated collection of the best tools and resources.",
+  title: "Nivix - 灵犀",
+  description: "AI 驱动的智能书签，懂收藏，更懂整理。",
 };
 
 export default function RootLayout({
@@ -45,7 +46,9 @@ export default function RootLayout({
         style={{ backgroundColor: 'var(--color-bg-primary)' }}
       >
         <ToastProvider>
-          {children}
+          <BatchAIProvider>
+            {children}
+          </BatchAIProvider>
         </ToastProvider>
       </body>
     </html>

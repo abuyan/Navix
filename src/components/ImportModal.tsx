@@ -266,7 +266,7 @@ export default function ImportModal({
                                 onClick={handleClose}
                                 className="flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors"
                                 style={{
-                                    backgroundColor: 'var(--color-bg-tertiary)',
+                                    backgroundColor: 'var(--color-action-bg)',
                                     color: 'var(--color-text-secondary)'
                                 }}
                             >
@@ -277,10 +277,8 @@ export default function ImportModal({
                                 disabled={!selectedFile}
                                 className="flex-1 px-4 py-2.5 rounded-lg font-medium text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={{
-                                    background: selectedFile
-                                        ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
-                                        : 'var(--color-bg-tertiary)',
-                                    color: selectedFile ? 'white' : 'var(--color-text-tertiary)'
+                                    backgroundColor: selectedFile ? 'var(--color-text-primary)' : 'var(--color-bg-tertiary)',
+                                    color: selectedFile ? 'var(--color-bg-primary)' : 'var(--color-text-tertiary)'
                                 }}
                             >
                                 开始导入
@@ -327,9 +325,10 @@ export default function ImportModal({
                         </div>
                         <button
                             onClick={() => window.location.reload()}
-                            className="mt-4 px-6 py-2.5 rounded-lg font-medium text-white"
+                            className="mt-4 px-6 py-2.5 rounded-lg font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
                             style={{
-                                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
+                                backgroundColor: 'var(--color-text-primary)',
+                                color: 'var(--color-bg-primary)'
                             }}
                         >
                             刷新页面

@@ -95,7 +95,7 @@ export default function PanelModal({ isOpen, onClose, onSuccess, panel }: PanelM
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-                            版块名称 <span className="text-red-500">*</span>
+                            版块名称
                         </label>
                         <input
                             autoFocus

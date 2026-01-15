@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { mockData } from '../src/data/mock'
 import 'dotenv/config'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient() as any
 
@@ -12,6 +13,9 @@ async function main() {
     await prisma.category.deleteMany()
     await prisma.panel.deleteMany()
     await prisma.systemConfig.deleteMany()
+    // Don't delete users to preserve admin account if running multiple times, 
+    // or we can strictly control it. Given this is dev seed, maybe we should?
+    // Let's decide to NOT delete users for now, or check existence.
 
     // 1. Create Default Panel
     const navPanel = await prisma.panel.create({
@@ -59,6 +63,25 @@ async function main() {
     await prisma.systemConfig.create({
         data: { key: 'AI_BASE_URL', value: 'https://open.bigmodel.cn/api/paas/v4' }
     })
+
+    // 4. Create Default Admin User
+    const existingUser = await prisma.user.findUnique({
+        where: { email: 'admin@navix.com' }
+    })
+
+    if (!existingUser) {
+        const hashedPassword = await bcrypt.hash('admin123', 10)
+        await prisma.user.create({
+            data: {
+                name: 'Admin',
+                email: 'admin@navix.com',
+                password: hashedPassword
+            }
+        })
+        console.log('Created admin user: admin@navix.com / admin123')
+    } else {
+        console.log('Admin user already exists.')
+    }
 
     console.log('Seeding finished.')
 }

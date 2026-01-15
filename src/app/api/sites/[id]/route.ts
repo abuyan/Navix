@@ -8,26 +8,29 @@ export async function PATCH(
     try {
         const { id } = await params;
         const body = await request.json();
-        const { title, url, description, icon, sortOrder, isPinned, categoryId } = body;
+        const { title, url, description, icon, categoryId, sortOrder, isPinned, tags, aiAnalyzed } = body;
+
+        const updateData: any = {};
+        if (title !== undefined) updateData.title = title;
+        if (url !== undefined) updateData.url = url;
+        if (description !== undefined) updateData.description = description;
+        if (icon !== undefined) updateData.icon = icon;
+        if (categoryId !== undefined) updateData.categoryId = categoryId;
+        if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
+        if (isPinned !== undefined) updateData.isPinned = isPinned;
+        if (tags !== undefined) updateData.tags = tags;
+        if (aiAnalyzed !== undefined) updateData.aiAnalyzed = aiAnalyzed;
 
         const updatedSite = await prisma.site.update({
             where: { id },
-            data: {
-                ...(title !== undefined && { title }),
-                ...(url !== undefined && { url }),
-                ...(description !== undefined && { description }),
-                ...(icon !== undefined && { icon }),
-                ...(sortOrder !== undefined && { sortOrder }),
-                ...(isPinned !== undefined && { isPinned }),
-                ...(categoryId !== undefined && { categoryId })
-            }
+            data: updateData
         });
 
         return NextResponse.json(updatedSite);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Update site error:', error);
         return NextResponse.json(
-            { error: '更新站点失败' },
+            { error: error.message || '更新站点失败' },
             { status: 500 }
         );
     }

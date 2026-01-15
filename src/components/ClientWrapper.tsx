@@ -15,11 +15,29 @@ import PageToolbar, { SortBy, SortOrder } from './PageToolbar';
 import ImportModal from './ImportModal';
 import { SiteEditModal } from './SiteEditModal';
 import { useToast } from './Toast';
+import ConfirmModal from './ConfirmModal';
+import { useBatchAI } from '@/contexts/BatchAIContext';
 
 type CategoryWithSites = Category & { sites: Site[] };
 
-export default function ClientWrapper({ initialCategories, panelId, panels }: { initialCategories: CategoryWithSites[], panelId: string, panels: any[] }) {
+export default function ClientWrapper({ initialCategories, panelId, panels, user }: { initialCategories: CategoryWithSites[], panelId: string, panels: any[], user?: any }) {
     const { showToast } = useToast();
+    const { isBatchAnalyzing, batchProgress, startBatchAnalysis, subscribe } = useBatchAI();
+
+    // Subscribe to background AI analysis updates
+    useEffect(() => {
+        const unsubscribe = subscribe((updatedSite) => {
+            setCategories(prev => prev.map(cat => {
+                if (cat.id !== updatedSite.categoryId) return cat;
+                return {
+                    ...cat,
+                    sites: cat.sites.map(s => s.id === updatedSite.id ? { ...s, ...updatedSite } : s)
+                };
+            }));
+        });
+        return unsubscribe;
+    }, [subscribe]);
+
     const [categories, setCategories] = useState(initialCategories);
     const initialId = categories.length > 0 ? categories[0].id : '';
     const [activeCategory, setActiveCategory] = useState(initialId);
@@ -31,6 +49,9 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
     const [isAddingSite, setIsAddingSite] = useState(false);
     const [sortBy, setSortBy] = useState<SortBy>('visits');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+    const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+
+    // Removed local isBatchAnalyzing and batchProgress state
     const isScrollingRef = useRef(false);
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -90,6 +111,37 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
         scrollToSite(result.id, result.categoryId);
     };
 
+    const handleConfirmClearEmpty = async () => {
+        try {
+            const response = await fetch('/api/categories/clear-empty', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ panelId }),
+            });
+
+            if (!response.ok) throw new Error('Failed to clear empty categories');
+
+            const data = await response.json();
+
+            if (data.count > 0) {
+                // Determine if we need to reload or just update state.
+                // Since this deletes categories, we can technically filter them locally.
+                setCategories(prev => prev.filter(cat => cat.sites.length > 0));
+                showToast(`已清理 ${data.count} 个空分类`, 'success');
+            } else {
+                showToast('没有发现空分类', 'info');
+            }
+        } catch (error) {
+            console.error('Failed to clear empty categories:', error);
+            showToast('清理失败', 'error');
+        }
+    };
+
+    const handleBatchAIAnalyze = async () => {
+        const allSites = categories.flatMap(c => c.sites);
+        await startBatchAnalysis(allSites);
+    };
+
     useEffect(() => {
         if (categories.length === 0) return;
 
@@ -118,6 +170,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
         <DndProvider>
             {/* Sidebar (Desktop) - Fixed position, left side */}
             <Sidebar
+                user={user}
                 categories={categories}
                 activeCategory={activeCategory}
                 onCategoryChange={handleCategoryChange}
@@ -149,7 +202,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                     className="font-bold text-lg"
                     style={{ color: 'var(--color-text-primary)' }}
                 >
-                    Navix
+                    Nivix 灵犀导航
                 </span>
                 <div className="flex items-center gap-2">
                     <ThemeToggle />
@@ -200,6 +253,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                     onResultSelect={handleSearchResultSelect}
                     onResultFocus={handleSearchResultFocus}
                     panels={panels}
+                    user={user}
                 />
 
                 {/* Main Content Area */}
@@ -209,18 +263,25 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                 >
                     {/* Add padding for TopNav on desktop, for mobile header on mobile */}
                     <div className="max-w-full mx-auto px-4 sm:px-10 pt-24 md:pt-24 pb-8 space-y-6 min-h-screen">
-                        {/* 页面工具栏 */}
-                        <PageToolbar
-                            onAddCategory={() => setIsCreatingCategory(true)}
-                            onAddSite={() => setIsAddingSite(true)}
-                            onImport={() => setIsImporting(true)}
-                            sortBy={sortBy}
-                            sortOrder={sortOrder}
-                            onSortChange={(newSortBy, newSortOrder) => {
-                                setSortBy(newSortBy);
-                                setSortOrder(newSortOrder);
-                            }}
-                        />
+                        {/* 页面工具栏 - Only show if user is authenticated (hide completely for guests) */}
+                        {user && (
+                            <PageToolbar
+                                user={user}
+                                onAddCategory={() => setIsCreatingCategory(true)}
+                                onAddSite={() => setIsAddingSite(true)}
+                                onImport={() => setIsImporting(true)}
+                                onBatchAI={handleBatchAIAnalyze}
+                                isBatchAnalyzing={isBatchAnalyzing}
+                                batchProgress={batchProgress}
+                                onClearEmpty={() => setIsClearConfirmOpen(true)}
+                                sortBy={sortBy}
+                                sortOrder={sortOrder}
+                                onSortChange={(newSortBy, newSortOrder) => {
+                                    setSortBy(newSortBy);
+                                    setSortOrder(newSortOrder);
+                                }}
+                            />
+                        )}
 
                         <div className="space-y-6">
                             {categories.map((category, index) => (
@@ -230,6 +291,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                                     className="scroll-mt-24"
                                 >
                                     <CategoryTitle
+                                        user={user}
                                         category={{
                                             ...category,
                                             _count: { sites: category.sites.length }
@@ -240,9 +302,10 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                                         onEditComplete={async (id, data) => {
                                             try {
                                                 await updateCategory(id, data);
-                                                // 如果 panelId 变化了，说明分类被移到了其他版块，需要刷新页面
+                                                // 如果 panelId 变化了，说明分类被移到了其他版块，移除当前视图中的分类
                                                 if (data.panelId && data.panelId !== panelId) {
-                                                    window.location.reload();
+                                                    setCategories(prev => prev.filter(c => c.id !== id));
+                                                    showToast('分类已移动到其他版块', 'success');
                                                     return;
                                                 }
                                                 // 局部更新状态，避免 window.location.reload() 导致的页面跳动和闪烁
@@ -296,6 +359,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                                             .map((site) => (
                                                 <div key={site.id} id={`site-${site.id}`}>
                                                     <SiteCard
+                                                        user={user}
                                                         site={site}
                                                         onUpdate={(updatedSite) => {
                                                             // 局部更新站点状态并重排序
@@ -352,7 +416,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                                 color: 'var(--color-text-tertiary)'
                             }}
                         >
-                            <p>© {new Date().getFullYear()} Navix. Designed with layered shadows & dark mode.</p>
+                            <p>© {new Date().getFullYear()} Nivix. Designed with layered shadows & dark mode.</p>
                         </footer>
                     </div>
                 </main>
@@ -432,6 +496,17 @@ export default function ClientWrapper({ initialCategories, panelId, panels }: { 
                         showToast('添加站点失败', 'error');
                     }
                 }}
+            />
+
+            <ConfirmModal
+                isOpen={isClearConfirmOpen}
+                onClose={() => setIsClearConfirmOpen(false)}
+                onConfirm={handleConfirmClearEmpty}
+                title="清理空分类"
+                message="确定要删除当前版块下所有没有站点的空分类吗？此操作无法撤销。"
+                confirmText="清理"
+                cancelText="取消"
+                type="warning"
             />
         </DndProvider>
     );

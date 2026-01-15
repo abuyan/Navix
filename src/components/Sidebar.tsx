@@ -51,7 +51,8 @@ export default function Sidebar({
     isCollapsed,
     onToggle,
     onCategoriesReorder,
-    className = ""
+    className = "",
+    user // Add user prop
 }: {
     categories: Category[],
     activeCategory: string,
@@ -59,7 +60,8 @@ export default function Sidebar({
     isCollapsed: boolean,
     onToggle: () => void,
     onCategoriesReorder?: (categories: Category[]) => void,
-    className?: string
+    className?: string,
+    user?: any // Add user prop type
 }) {
     const { showToast } = useToast();
     const [categories, setCategories] = useState(externalCategories);
@@ -207,12 +209,21 @@ export default function Sidebar({
                         N
                     </div>
                     {!isCollapsed && (
-                        <span
-                            className="text-xl font-bold tracking-tight whitespace-nowrap overflow-hidden"
-                            style={{ color: 'var(--color-text-primary)' }}
-                        >
-                            Navix
-                        </span>
+                        <div className={`flex flex-col ml-3 transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 flex-1'}`}>
+                            <span
+                                className="font-bold text-lg leading-tight"
+                                style={{ color: 'var(--color-text-primary)' }}
+                            >
+                                Nivix 灵犀导航
+                            </span>
+                            <span
+                                className="text-xs leading-tight mt-0.5 truncate max-w-[160px]"
+                                style={{ color: 'var(--color-text-secondary)' }}
+                                title="AI 驱动的智能书签，懂收藏，更懂整理。"
+                            >
+                                AI 驱动的智能书签
+                            </span>
+                        </div>
                     )}
                 </div>
             </div>
@@ -261,6 +272,7 @@ export default function Sidebar({
                             onMove={moveCategory}
                             onDragEnd={() => handleDragEnd(cat.id)}
                             onClick={() => scrollToCategory(cat.id)}
+                            disabled={!user} // Disable drag if not authenticated
                         />
                     );
                 })}

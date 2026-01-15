@@ -19,6 +19,7 @@ interface DraggableSidebarItemProps {
     onMove: (dragIndex: number, hoverIndex: number) => void;
     onDragEnd: () => void;
     onClick: () => void;
+    disabled?: boolean;
 }
 
 interface DragItem {
@@ -37,7 +38,8 @@ export function DraggableSidebarItem({
     IconComponent,
     onMove,
     onDragEnd,
-    onClick
+    onClick,
+    disabled
 }: DraggableSidebarItemProps) {
     const ref = useRef<HTMLButtonElement>(null);
 
@@ -74,6 +76,7 @@ export function DraggableSidebarItem({
         item: () => {
             return { id: category.id, index };
         },
+        canDrag: !disabled,
         end: (item, monitor) => {
             if (monitor.didDrop() || !monitor.didDrop()) {
                 // Regardless of whether it was dropped on a target, 
