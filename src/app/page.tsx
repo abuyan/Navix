@@ -35,13 +35,27 @@ export default async function Home() {
   // If visitor (Admin Template), show only public.
   const isVisitor = !session?.user;
 
-  const allPanels = await prisma.panel.findMany({
+  const allPanelsRaw = await prisma.panel.findMany({
     where: {
       userId: targetUserId,
       ...(isVisitor ? { isPublic: true } : {}) // Visitors only see public panels
     },
+    include: {
+      categories: {
+        include: {
+          _count: {
+            select: { sites: true }
+          }
+        }
+      }
+    },
     orderBy: { sortOrder: 'asc' }
   });
+
+  const allPanels = allPanelsRaw.map(panel => ({
+    ...panel,
+    siteCount: panel.categories.reduce((acc, cat) => acc + cat._count.sites, 0)
+  }));
 
   if (allPanels.length === 0) {
     // Edge case: Admin has no public panels or user has no panels (new user before onboarding?)

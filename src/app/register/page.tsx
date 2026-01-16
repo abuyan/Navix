@@ -24,13 +24,13 @@ export default function RegisterPage() {
                         className="text-2xl font-bold mb-2"
                         style={{ color: 'var(--color-text-primary)' }}
                     >
-                        加入 Nivix
+                        加入 Nivix 灵犀导航
                     </h1>
                     <p
                         className="text-sm"
                         style={{ color: 'var(--color-text-secondary)' }}
                     >
-                        创建您的个人专属导航
+                        一款 AI 驱动的智能书签，懂收藏，更懂整理。
                     </p>
                 </div>
                 <RegisterForm />

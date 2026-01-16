@@ -4,9 +4,9 @@ import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 
 interface Props {
-    params: {
+    params: Promise<{
         username: string;
-    }
+    }>
 }
 
 async function getProfileData(username: string, currentUserId?: string) {
@@ -65,8 +65,9 @@ async function getProfileData(username: string, currentUserId?: string) {
 }
 
 export async function generateMetadata({ params }: Props) {
+    const { username } = await params;
     const user = await prisma.user.findUnique({
-        where: { username: params.username },
+        where: { username },
         select: { name: true }
     });
 
@@ -79,13 +80,14 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function UserProfilePage({ params }: Props) {
     const session = await auth();
-    const data = await getProfileData(params.username, session?.user?.id);
+    const { username } = await params;
+    const data = await getProfileData(username, session?.user?.id);
 
     if (!data) {
         notFound();
     }
 
-    const { panels, initialCategories, activePanelId, isOwner } = data;
+    const { panels, initialCategories, activePanelId, isOwner, profileUser } = data;
 
     // If visitor and no panels, show empty state or "Private Profile"?
     if (!isOwner && panels.length === 0) {
@@ -104,6 +106,7 @@ export default async function UserProfilePage({ params }: Props) {
             panels={panels}
             user={session?.user} // Pass CURRENT user session
             readOnly={!isOwner}  // Read only if not owner
+            owner={!isOwner ? { name: profileUser.name } : undefined}
         />
     );
 }

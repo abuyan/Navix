@@ -7,7 +7,7 @@ import SiteCard from '@/components/SiteCard';
 import CategoryTitle from './CategoryTitle';
 import DndProvider from './DndProvider';
 import { Category, Site } from '@prisma/client';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Layout, Settings, LogOut, ChevronRight, Folder } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { updateCategory } from '@/lib/category-api';
 import { CategoryEditModal } from './CategoryEditModal';
@@ -16,29 +16,80 @@ import ImportModal from './ImportModal';
 import { SiteEditModal } from './SiteEditModal';
 import { useToast } from './Toast';
 import ConfirmModal from './ConfirmModal';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { useBatchAI } from '@/contexts/BatchAIContext';
 import { useSearchParams } from 'next/navigation';
+import AITaskIndicator from './AITaskIndicator';
+import { AIDiscoveryModal } from './AIDiscoveryModal';
+import BackToTop from './BackToTop';
 
 type CategoryWithSites = Category & { sites: Site[] };
 
-export default function ClientWrapper({ initialCategories, panelId, panels, user, readOnly = false }: { initialCategories: CategoryWithSites[], panelId: string, panels: any[], user?: any, readOnly?: boolean }) {
+export default function ClientWrapper({
+    initialCategories,
+    panelId,
+    panels,
+    user,
+    readOnly = false,
+    owner
+}: {
+    initialCategories: CategoryWithSites[],
+    panelId: string,
+    panels: any[],
+    user?: any,
+    readOnly?: boolean,
+    owner?: { name: string | null }
+}) {
     const { data: session, status } = useSession();
     const { showToast } = useToast();
-    const { isBatchAnalyzing, batchProgress, startBatchAnalysis, subscribe } = useBatchAI();
+    const { isBatchAnalyzing, batchProgress, startBatchAnalysis, startBatchCategorization, startBatchIconGeneration, subscribe } = useBatchAI();
     const searchParams = useSearchParams();
 
     // Subscribe to background AI analysis updates
     useEffect(() => {
         if (readOnly) return; // Don't subscribe if read-only
         const unsubscribe = subscribe((updatedSite) => {
-            setCategories(prev => prev.map(cat => {
-                if (cat.id !== updatedSite.categoryId) return cat;
-                return {
-                    ...cat,
-                    sites: cat.sites.map(s => s.id === updatedSite.id ? { ...s, ...updatedSite } : s)
-                };
-            }));
+            const unsubscribe = subscribe((updatedSite) => {
+                setCategories(prev => {
+                    // Check if this is a move operation (site exists in a different category)
+                    let oldCategoryId: string | null = null;
+                    for (const cat of prev) {
+                        if (cat.sites.some(s => s.id === updatedSite.id)) {
+                            oldCategoryId = cat.id;
+                            break;
+                        }
+                    }
+
+                    // If site wasn't found or category didn't change, use simple update
+                    if (!oldCategoryId || oldCategoryId === updatedSite.categoryId) {
+                        return prev.map(cat => {
+                            if (cat.id !== updatedSite.categoryId) return cat;
+                            return {
+                                ...cat,
+                                sites: cat.sites.map(s => s.id === updatedSite.id ? { ...s, ...updatedSite } : s)
+                            };
+                        });
+                    }
+
+                    // Handle Move: Remove from old, Add to new
+                    return prev.map(cat => {
+                        if (cat.id === oldCategoryId) {
+                            return { ...cat, sites: cat.sites.filter(s => s.id !== updatedSite.id) };
+                        }
+                        if (cat.id === updatedSite.categoryId) {
+                            // Check if site already exists in target (shouldn't happen but safe)
+                            if (cat.sites.some(s => s.id === updatedSite.id)) return cat;
+                            // Add to new category (potentially merged with existing data if we had full site object)
+                            // Since updatedSite might only have partial data, we should try to find the full site object first
+                            const existingSite = prev.find(c => c.id === oldCategoryId)?.sites.find(s => s.id === updatedSite.id);
+                            const newSite = { ...existingSite!, ...updatedSite }; // Merge
+
+                            return { ...cat, sites: [...cat.sites, newSite] };
+                        }
+                        return cat;
+                    });
+                });
+            });
         });
         return unsubscribe;
     }, [subscribe, readOnly]);
@@ -56,6 +107,23 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
     const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
     const [aiConfigured, setAiConfigured] = useState(false);
+    const [editingCategory, setEditingCategory] = useState<CategoryWithSites | null>(null);
+    const [isAIDiscoveryOpen, setIsAIDiscoveryOpen] = useState(false);
+
+    // 监听窗口宽度，小于 1000px 自动收起侧边栏
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 1000) {
+                setSidebarCollapsed(true);
+            }
+        };
+
+        // 初始化检查一次
+        handleResize();
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // 处理跨收藏夹定位逻辑 (从 URL 参数获取 siteId)
     useEffect(() => {
@@ -83,6 +151,21 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
         scrollTimeoutRef.current = setTimeout(() => {
             isScrollingRef.current = false;
         }, 1000);
+
+        // Scroll Logic
+        const container = document.getElementById('main-scroll-container');
+        const element = document.getElementById(id);
+        if (container && element) {
+            const offset = 20; // Slight offset for spacing
+            const elementTop = element.getBoundingClientRect().top;
+            const containerTop = container.getBoundingClientRect().top;
+            const offsetPosition = elementTop - containerTop + container.scrollTop - offset;
+
+            container.scrollTo({
+                top: offsetPosition,
+                behavior: 'smooth'
+            });
+        }
     };
 
     const scrollToSite = (siteId: string, categoryId: string) => {
@@ -91,12 +174,17 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
 
         // 延迟滚动，确保分类已经渲染或展示
         setTimeout(() => {
+            const container = document.getElementById('main-scroll-container');
             const element = document.getElementById(`site-${siteId}`);
-            if (element) {
+
+            if (container && element) {
                 const offset = 100;
-                const elementPosition = element.getBoundingClientRect().top;
-                const offsetPosition = elementPosition + window.pageYOffset - offset;
-                window.scrollTo({
+                // Calculations for scrolling inside a container
+                const elementTop = element.getBoundingClientRect().top;
+                const containerTop = container.getBoundingClientRect().top;
+                const offsetPosition = elementTop - containerTop + container.scrollTop - offset; // Relative position
+
+                container.scrollTo({
                     top: offsetPosition,
                     behavior: "smooth"
                 });
@@ -104,9 +192,19 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                 // 增加一个短暂的高亮效果
                 element.classList.add('search-highlight');
                 setTimeout(() => element.classList.remove('search-highlight'), 2000);
-            } else {
+            } else if (container) {
                 // 如果找不到具体的网页元素（可能在尚未渲染的分类中），就滚到分类
-                document.getElementById(categoryId)?.scrollIntoView({ behavior: 'smooth' });
+                const categoryElement = document.getElementById(categoryId);
+                if (categoryElement) {
+                    const elementTop = categoryElement.getBoundingClientRect().top;
+                    const containerTop = container.getBoundingClientRect().top;
+                    const offsetPosition = elementTop - containerTop + container.scrollTop - 20;
+
+                    container.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                    });
+                }
             }
         }, 100);
     };
@@ -140,6 +238,39 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
     const handleBatchAIAnalyze = async () => {
         const allSites = categories.flatMap(c => c.sites);
         await startBatchAnalysis(allSites);
+    };
+
+    const handleAIDiscoverAddSites = async (sites: { title: string, url: string, description: string }[], categoryId: string | 'new') => {
+        try {
+            let actualCategoryId = categoryId;
+
+            // 如果是新建分类
+            if (categoryId === 'new') {
+                const response = await fetch('/api/categories', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: 'AI 发现', panelId }),
+                });
+                if (!response.ok) throw new Error('Failed to create AI category');
+                const newCategory = await response.json();
+                actualCategoryId = newCategory.id;
+                // 注意：这里我们不需要手动更新 categories 状态，因为后续批量添加站点后会触发刷新（或者我们可以局部添加）
+                // 为了简单且确保正确，我们先只处理站点的批量添加，然后刷新页面
+            }
+
+            // 批量添加站点
+            const promises = sites.map(site => fetch('/api/sites', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...site, categoryId: actualCategoryId }),
+            }));
+
+            await Promise.all(promises);
+            window.location.reload(); // 简单起见，刷新页面以加载所有新分类和站点
+        } catch (error) {
+            console.error('Failed to add discovered sites:', error);
+            throw error;
+        }
     };
 
     useEffect(() => {
@@ -185,7 +316,12 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
             {/* Sidebar (Desktop) - Fixed position, left side */}
             <Sidebar
                 user={readOnly ? undefined : user}
-                categories={categories}
+                categories={categories.map(cat => ({
+                    id: cat.id,
+                    name: cat.name,
+                    icon: cat.icon,
+                    sitesCount: cat.sites.length
+                }))}
                 activeCategory={activeCategory}
                 onCategoryChange={handleCategoryChange}
                 isCollapsed={sidebarCollapsed}
@@ -201,6 +337,10 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                         } as CategoryWithSites;
                     });
                     setCategories(newCategories);
+                }}
+                onCategoryDoubleClick={(id) => {
+                    const cat = categories.find(c => c.id === id);
+                    if (cat) setEditingCategory(cat);
                 }}
             />
 
@@ -233,59 +373,140 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
             {/* Mobile Menu Overlay */}
             {mobileMenuOpen && (
                 <div
-                    className="fixed inset-0 z-40 pt-16 md:hidden"
+                    className="fixed inset-0 z-40 pt-16 md:hidden overflow-y-auto"
                     style={{ backgroundColor: 'var(--sidebar-bg)' }}
                 >
-                    <div className="p-4 space-y-2">
-                        {categories.map(cat => (
-                            <button
-                                key={cat.id}
-                                onClick={() => {
-                                    setActiveCategory(cat.id);
-                                    setMobileMenuOpen(false);
-                                    document.getElementById(cat.id)?.scrollIntoView();
-                                }}
-                                className="block w-full text-left px-4 py-3 rounded-lg font-medium transition-colors"
-                                style={{
-                                    color: 'var(--color-text-primary)',
-                                    backgroundColor: activeCategory === cat.id ? 'var(--color-accent-soft)' : 'transparent'
-                                }}
-                            >
-                                {cat.name}
-                            </button>
-                        ))}
+                    <div className="p-4 space-y-6 pb-20">
+                        {/* 收藏夹列表 (Panels) */}
+                        <div>
+                            <div className="px-4 mb-3 flex items-center gap-2">
+                                <Layout size={14} className="text-[var(--color-text-tertiary)]" />
+                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--color-text-tertiary)]">收藏夹</span>
+                            </div>
+                            <div className="grid grid-cols-1 gap-1">
+                                {panels.map(panel => {
+                                    const isActive = panel.id === panelId;
+                                    return (
+                                        <button
+                                            key={panel.id}
+                                            onClick={() => {
+                                                const url = panel.slug === 'home' ? '/' : `/p/${panel.slug || panel.id}`;
+                                                setMobileMenuOpen(false);
+                                                window.location.href = url;
+                                            }}
+                                            className="flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200"
+                                            style={{
+                                                backgroundColor: isActive ? 'var(--color-accent-soft)' : 'transparent',
+                                                color: isActive ? 'var(--color-accent)' : 'var(--color-text-primary)'
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Folder size={18} className={isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-tertiary)]'} />
+                                                <span className="font-medium">{panel.name}</span>
+                                            </div>
+                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isActive ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]' : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]'}`}>
+                                                {(panel as any).siteCount || 0}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* 系统操作 */}
+                        <div className="pt-4 border-t border-[var(--sidebar-border)]">
+                            {status === 'authenticated' ? (
+                                <button
+                                    onClick={() => {
+                                        setMobileMenuOpen(false);
+                                        signOut({ callbackUrl: '/' });
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                                >
+                                    <LogOut size={18} className="text-[var(--color-text-tertiary)]" />
+                                    <span className="font-medium">退出登录</span>
+                                </button>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setMobileMenuOpen(false);
+                                            window.location.href = '/login';
+                                        }}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all text-sm border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]"
+                                    >
+                                        登录
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setMobileMenuOpen(false);
+                                            window.location.href = '/register';
+                                        }}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all text-sm hover:opacity-90 active:scale-[0.98]"
+                                        style={{
+                                            backgroundColor: 'var(--color-text-primary)',
+                                            color: 'var(--color-bg-primary)'
+                                        }}
+                                    >
+                                        注册
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Content Wrapper - Handles offset and flow */}
-            <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'md:ml-[72px]' : 'md:ml-64'}`}>
+            <div className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'md:ml-[72px]' : 'md:ml-64'}`}>
                 {/* Top Navigation (Desktop) - Sticky inside content wrapper */}
-                <TopNav
-                    sidebarCollapsed={sidebarCollapsed}
-                    activePanelId={panelId}
-                    panels={panels}
-                    user={user}
-                    authStatus={status === 'loading' ? 'loading' : (session ? 'authenticated' : 'unauthenticated')}
-                    onResultSelect={(result) => scrollToSite(result.id, result.categoryId)}
-                    onResultFocus={(result) => scrollToSite(result.id, result.categoryId)}
-                />
+                <div className="flex-none z-30 bg-[var(--color-bg-primary)]">
+                    <TopNav
+                        sidebarCollapsed={sidebarCollapsed}
+                        activePanelId={panelId}
+                        panels={panels}
+                        user={user}
+                        authStatus={status === 'loading' ? 'loading' : (session ? 'authenticated' : 'unauthenticated')}
+                        onResultSelect={(result) => scrollToSite(result.id, result.categoryId)}
+                        onResultFocus={(result) => scrollToSite(result.id, result.categoryId)}
+                    />
+                </div>
 
-                {/* Main Content Area */}
+                {/* Main Content Area - Scrollable */}
                 <main
-                    className="min-h-screen"
+                    id="main-scroll-container"
+                    className="flex-1 overflow-y-auto scroll-smooth"
                     style={{ backgroundColor: 'var(--color-bg-primary)' }}
                 >
-                    {/* Add padding for TopNav on desktop, for mobile header on mobile */}
-                    <div className="max-w-full mx-auto px-4 sm:px-10 pt-24 md:pt-24 pb-8 space-y-6 min-h-screen">
+                    {/* Add padding for TopNav is NOT needed as padding-top because nav is not fixed anymore, it is flex item. 
+                        But getting back to top works better if we have some padding? 
+                        The original code had pt-24. Since TopNav is now in flow, we don't need top padding to clear it.
+                        However, we want some spacing.
+                    */}
+                    <div className="max-w-full mx-auto px-4 sm:px-10 py-8 space-y-6 min-h-full">
+
                         {/* 页面工具栏 - Only show if user is authenticated AND not read-only */}
                         {user && !readOnly && (
                             <PageToolbar
                                 user={user}
+                                panelName={panels.find(p => p.id === panelId)?.name}
+                                isPublic={panels.find(p => p.id === panelId)?.isPublic}
+                                panelSlug={panels.find(p => p.id === panelId)?.slug}
+                                panelId={panelId}
                                 onAddCategory={() => setIsCreatingCategory(true)}
                                 onAddSite={() => setIsAddingSite(true)}
                                 onImport={() => setIsImporting(true)}
                                 onBatchAI={handleBatchAIAnalyze}
+                                onAICategorize={async () => {
+                                    const allSites = categories.flatMap(c => c.sites);
+                                    const simpleCategories = categories.map(c => ({ id: c.id, name: c.name }));
+                                    await startBatchCategorization(allSites, simpleCategories);
+                                }}
+                                onAIIcon={() => {
+                                    const cleanCategories = categories.map(c => ({ id: c.id, name: c.name }));
+                                    startBatchIconGeneration(cleanCategories);
+                                }}
+                                onAIDiscover={() => setIsAIDiscoveryOpen(true)}
                                 isBatchAnalyzing={isBatchAnalyzing}
                                 batchProgress={batchProgress}
                                 onClearEmpty={() => setIsClearConfirmOpen(true)}
@@ -304,7 +525,7 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                                 <section
                                     key={category.id}
                                     id={category.id}
-                                    className="scroll-mt-24"
+                                    className="scroll-mt-4" // Reduced scroll margin needed
                                 >
                                     <CategoryTitle
                                         user={readOnly ? undefined : user}
@@ -363,6 +584,12 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1800px]:grid-cols-6 min-[2200px]:grid-cols-7 min-[2600px]:grid-cols-8 min-[3000px]:grid-cols-9 min-[3400px]:grid-cols-10 gap-4">
                                         {[...category.sites]
                                             .sort((a, b) => {
+                                                // 1. 优先按 isPinned 排序 (true 在前)
+                                                if (a.isPinned !== b.isPinned) {
+                                                    return a.isPinned ? -1 : 1;
+                                                }
+
+                                                // 2. 二级排序：按用户选定的规则
                                                 if (sortBy === 'name') {
                                                     const comparison = a.title.localeCompare(b.title, 'zh-CN');
                                                     return sortOrder === 'asc' ? comparison : -comparison;
@@ -402,10 +629,22 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                                                                     }));
                                                                 }
 
-                                                                // 仅按点击量重新排序网页
+                                                                // 保持与主渲染一致的排序逻辑
                                                                 return newCategories.map(cat => ({
                                                                     ...cat,
-                                                                    sites: [...cat.sites].sort((a, b) => (b.visits || 0) - (a.visits || 0))
+                                                                    sites: [...cat.sites].sort((a, b) => {
+                                                                        if (a.isPinned !== b.isPinned) {
+                                                                            return a.isPinned ? -1 : 1;
+                                                                        }
+                                                                        if (sortBy === 'name') {
+                                                                            const comparison = a.title.localeCompare(b.title, 'zh-CN');
+                                                                            return sortOrder === 'asc' ? comparison : -comparison;
+                                                                        } else {
+                                                                            const aVisits = a.visits || 0;
+                                                                            const bVisits = b.visits || 0;
+                                                                            return sortOrder === 'asc' ? aVisits - bVisits : bVisits - aVisits;
+                                                                        }
+                                                                    })
                                                                 }));
                                                             });
                                                         }}
@@ -430,6 +669,8 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                 </main>
             </div>
 
+            <BackToTop />
+
             {/* 新建分类弹窗 */}
             <CategoryEditModal
                 category={null}
@@ -452,13 +693,17 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
 
                         // 延迟滚动到新分类并高亮
                         setTimeout(() => {
+                            const container = document.getElementById('main-scroll-container');
                             const element = document.getElementById(newCategory.id);
                             const titleElement = document.getElementById(`title-${newCategory.id}`);
-                            if (element) {
+
+                            if (container && element) {
                                 const offset = 100;
-                                const elementPosition = element.getBoundingClientRect().top;
-                                const offsetPosition = elementPosition + window.pageYOffset - offset;
-                                window.scrollTo({
+                                const elementTop = element.getBoundingClientRect().top;
+                                const containerTop = container.getBoundingClientRect().top;
+                                const offsetPosition = elementTop - containerTop + container.scrollTop - offset;
+
+                                container.scrollTo({
                                     top: offsetPosition,
                                     behavior: "smooth"
                                 });
@@ -516,6 +761,88 @@ export default function ClientWrapper({ initialCategories, panelId, panels, user
                 cancelText="取消"
                 type="warning"
             />
+
+            {/* 侧边栏双击编辑分类弹窗 */}
+            {editingCategory && (
+                <CategoryEditModal
+                    category={{
+                        ...editingCategory,
+                        _count: { sites: editingCategory.sites.length }
+                    }}
+                    isOpen={!!editingCategory}
+                    onClose={() => setEditingCategory(null)}
+                    onSave={async (id, data) => {
+                        try {
+                            await updateCategory(id, data);
+                            if (data.panelId && data.panelId !== panelId) {
+                                setCategories(prev => prev.filter(c => c.id !== id));
+                                showToast('分类已移动到其他收藏夹', 'success');
+                            } else {
+                                setCategories(prev => prev.map(cat =>
+                                    cat.id === id ? { ...cat, ...data } : cat
+                                ));
+                            }
+                            setEditingCategory(null);
+                        } catch (error) {
+                            console.error('Failed to update category:', error);
+                        }
+                    }}
+                    onDelete={async (id) => {
+                        try {
+                            const response = await fetch(`/api/categories/${id}`, {
+                                method: 'DELETE',
+                            });
+                            if (!response.ok) throw new Error('Failed to delete category');
+                            setCategories(prev => prev.filter(cat => cat.id !== id));
+                            setEditingCategory(null);
+                        } catch (error) {
+                            console.error('Failed to delete category:', error);
+                            showToast('删除分类失败', 'error');
+                        }
+                    }}
+                    panels={panels.map(p => ({ id: p.id, name: p.name }))}
+                    currentPanelId={panelId}
+                />
+            )}
+
+            {readOnly && owner && (
+                <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-500">
+                    <div className="flex items-center gap-3 pl-4 pr-2 py-2 bg-white/80 dark:bg-black/80 backdrop-blur-md border border-[var(--color-border)] rounded-full shadow-lg hover:shadow-xl transition-shadow">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                            <span style={{ color: 'var(--color-text-secondary)' }}>来自</span>
+                            <span className="font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
+                                {owner.name || '用户'}
+                            </span>
+                            <span style={{ color: 'var(--color-text-secondary)' }}>的收藏夹</span>
+                        </div>
+                        <button
+                            onClick={(e) => {
+                                const target = e.currentTarget.parentElement?.parentElement;
+                                if (target) {
+                                    target.style.opacity = '0';
+                                    target.style.pointerEvents = 'none';
+                                }
+                            }}
+                            className="p-1.5 hover:bg-[var(--color-bg-secondary)] rounded-full transition-colors ml-1"
+                        >
+                            <X size={14} style={{ color: 'var(--color-text-tertiary)' }} />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+
+            {/* AI 发现弹窗 */}
+            <AIDiscoveryModal
+                isOpen={isAIDiscoveryOpen}
+                onClose={() => setIsAIDiscoveryOpen(false)}
+                categories={categories.map(c => ({ id: c.id, name: c.name }))}
+                onAddSites={handleAIDiscoverAddSites}
+            />
+
+            {/* AI 任务执行状态指示器 */}
+            <AITaskIndicator />
         </DndProvider>
     );
 }

@@ -5,7 +5,7 @@ import { useToast } from './Toast';
 import { CategoryEditModal } from './CategoryEditModal';
 import { SiteEditModal } from './SiteEditModal';
 import { Category, Site } from '@prisma/client';
-import { Plus, icons } from 'lucide-react';
+import { Plus, Edit, icons, Folder } from 'lucide-react';
 
 interface CategoryWithCount extends Category {
   _count: {
@@ -63,7 +63,7 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
     // @ts-ignore
     const Icon = icons[effectiveName as keyof typeof icons] as React.ComponentType<{ size?: number }>;
 
-    return Icon ? <Icon size={14} /> : <div className="w-3.5 h-3.5 text-gray-400">?</div>;
+    return Icon ? <Icon size={14} /> : <Folder size={14} className="text-gray-400" />;
   };
 
   return (
@@ -102,15 +102,25 @@ export function CategoryTitle({ category, categories, onEditComplete, onAddSiteC
             {category._count.sites}
           </span>
 
-          {/* 添加网页按钮 - Only show if user is authenticated */}
+          {/* 操作按钮组 - Only show if user is authenticated */}
           {user && (
-            <button
-              onClick={() => setIsAddingSite(true)}
-              className="p-1 rounded-md hover:bg-[var(--color-bg-tertiary)] transition-colors group/btn"
-              title="添加网页"
-            >
-              <Plus size={14} className="text-[var(--color-text-tertiary)] group-hover/btn:text-[var(--color-accent)]" />
-            </button>
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => setIsAddingSite(true)}
+                className="p-1 rounded-md hover:bg-[var(--color-bg-tertiary)] transition-colors group/btn"
+                title="添加网页"
+              >
+                <Plus size={14} className="text-[var(--color-text-tertiary)] group-hover/btn:text-[var(--color-accent)]" />
+              </button>
+
+              <button
+                onClick={() => setIsEditing(true)}
+                className="p-1 rounded-md hover:bg-[var(--color-bg-tertiary)] transition-colors group/btn"
+                title="编辑分类"
+              >
+                <Edit size={13} className="text-[var(--color-text-tertiary)] group-hover/btn:text-[var(--color-accent)]" />
+              </button>
+            </div>
           )}
         </div>
       </div>

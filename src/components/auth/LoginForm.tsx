@@ -57,8 +57,8 @@ export default function LoginForm() {
                     id="email"
                     type="email"
                     name="email"
-                    placeholder="admin@navix.com"
-                    defaultValue="admin@navix.com"
+                    placeholder="admin@nivix.com"
+                    defaultValue="admin@nivix.com"
                     required
                 />
             </div>

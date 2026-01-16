@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Plus, Search, ExternalLink, Layout, Cpu, FolderPlus, User, LogOut, Info, Settings } from 'lucide-react';
+import { ChevronDown, Plus, Search, ExternalLink, Layout, Cpu, FolderPlus, User, LogOut, Info, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import PanelModal from './PanelModal';
 import { useState, useRef, useEffect } from 'react';
@@ -51,8 +51,57 @@ export default function TopNav({
     const searchInputRef = useRef<HTMLInputElement>(null);
     const searchRef = useRef<HTMLDivElement>(null);
     const settingsRef = useRef<HTMLDivElement>(null);
+    const moreRef = useRef<HTMLDivElement>(null);
+    const [moreOpen, setMoreOpen] = useState(false);
 
 
+
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    // 检查滚动状态以决定箭头显隐
+    const checkScroll = () => {
+        if (navContainerRef.current) {
+            const { scrollLeft, scrollWidth, clientWidth } = navContainerRef.current;
+            setCanScrollLeft(scrollLeft > 10);
+            setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+        }
+    };
+
+    useEffect(() => {
+        checkScroll();
+        const nav = navContainerRef.current;
+        if (nav) {
+            nav.addEventListener('scroll', checkScroll);
+            window.addEventListener('resize', checkScroll);
+            return () => {
+                nav.removeEventListener('scroll', checkScroll);
+                window.removeEventListener('resize', checkScroll);
+            };
+        }
+    }, [panels]);
+
+    // 处理滚轮水平滑动映射
+    const handleWheel = (e: React.WheelEvent) => {
+        if (navContainerRef.current) {
+            navContainerRef.current.scrollLeft += e.deltaY;
+        }
+    };
+
+    // 手动步进滚动
+    const scroll = (direction: 'left' | 'right') => {
+        if (navContainerRef.current) {
+            const scrollAmount = direction === 'left' ? -200 : 200;
+            navContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+    };
+
+    // 快速归位
+    const scrollToStart = () => {
+        if (navContainerRef.current) {
+            navContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+        }
+    };
 
     // Determine active item based on pathname and panels
     const getCurrentActiveId = () => {
@@ -68,10 +117,25 @@ export default function TopNav({
 
     const currentActiveId = activePanelId || getCurrentActiveId();
 
+    const navContainerRef = useRef<HTMLDivElement>(null);
+    const activeItemRef = useRef<HTMLAnchorElement>(null);
+
+    // 自动滚动到当前激活项
+    useEffect(() => {
+        if (activeItemRef.current && navContainerRef.current) {
+            activeItemRef.current.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'center'
+            });
+        }
+    }, [currentActiveId]);
+
     const navItems = panels.map(p => ({
         id: p.id,
         name: p.name,
-        href: p.slug === 'home' ? '/' : `/p/${p.slug || p.id}`
+        href: p.slug === 'home' ? '/' : `/p/${p.slug || p.id}`,
+        isPublic: p.isPublic
     }));
 
     // 搜索结果状态
@@ -79,6 +143,7 @@ export default function TopNav({
     const [isSearching, setIsSearching] = useState(false);
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // ... (保持现有搜索逻辑不变)
     // API搜索（带防抖）
     useEffect(() => {
         if (searchTimeoutRef.current) {
@@ -143,6 +208,9 @@ export default function TopNav({
             }
             if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
                 setSettingsOpen(false);
+            }
+            if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
+                setMoreOpen(false);
             }
         };
 
@@ -213,7 +281,7 @@ export default function TopNav({
     return (
         <>
             <header
-                className={`fixed top-0 right-0 z-50 h-16 flex items-center justify-between px-6 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'md:left-[72px]' : 'md:left-64'} hidden md:flex`}
+                className={`relative z-50 h-16 flex items-center justify-between px-6 transition-all duration-300 ease-in-out w-full hidden md:flex`}
                 style={{
                     backgroundColor: 'color-mix(in srgb, var(--color-bg-primary), transparent 15%)',
                     backdropFilter: 'blur(12px)',
@@ -221,30 +289,72 @@ export default function TopNav({
                     borderBottom: '1px solid var(--color-border)'
                 }}
             >
-                {/* 一级导航菜单 */}
-                <nav className="flex items-center gap-1">
-                    {navItems.map((item) => {
-                        const isActive = currentActiveId === item.id;
-                        return (
-                            <Link
-                                key={item.id}
-                                href={item.href}
-                                className="relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:bg-[var(--color-bg-tertiary)]"
-                                style={{
-                                    color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-                                }}
+                {/* 导航菜单容器 - 增加物理滚动与渐变遮罩 */}
+                <div className="relative flex-1 flex items-center min-w-0 mr-4 group/nav">
+                    {/* 左侧箭头 & 遮罩 */}
+                    <div
+                        className={`absolute left-0 top-0 bottom-0 z-20 flex items-center transition-opacity duration-300 ${canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                    >
+                        <div
+                            className="h-full w-12 flex items-center pl-1"
+                            style={{ background: 'linear-gradient(to left, transparent, var(--color-bg-primary) 70%)' }}
+                        >
+                            <button
+                                onClick={scrollToStart}
+                                className="p-1.5 rounded-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)] shadow-md hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-secondary)]"
+                                title="点击返回最前面"
                             >
-                                {item.name}
-                                {isActive && (
-                                    <span
-                                        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[1.5px] rounded-full"
-                                        style={{ backgroundColor: 'var(--color-text-primary)' }}
-                                    />
-                                )}
-                            </Link>
-                        );
-                    })}
-                </nav>
+                                <ChevronLeft size={14} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <nav
+                        ref={navContainerRef}
+                        onWheel={handleWheel}
+                        className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-1 px-1 snap-x select-none"
+                    >
+                        {navItems.map((item) => {
+                            const isActive = currentActiveId === item.id;
+                            return (
+                                <Link
+                                    key={item.id}
+                                    href={item.href}
+                                    ref={isActive ? activeItemRef : null}
+                                    className="relative flex-shrink-0 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:bg-[var(--color-bg-tertiary)] group flex items-center gap-1.5 snap-center"
+                                    style={{
+                                        color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                                    }}
+                                >
+                                    {item.name}
+                                    {isActive && (
+                                        <span
+                                            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[1.5px] rounded-full"
+                                            style={{ backgroundColor: 'var(--color-text-primary)' }}
+                                        />
+                                    )}
+                                </Link>
+                            );
+                        })}
+                    </nav>
+
+                    {/* 右侧箭头 & 遮罩 */}
+                    <div
+                        className={`absolute right-0 top-0 bottom-0 z-20 flex items-center transition-opacity duration-300 ${canScrollRight ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                    >
+                        <div
+                            className="h-full w-12 flex items-center justify-end pr-1"
+                            style={{ background: 'linear-gradient(to right, transparent, var(--color-bg-primary) 70%)' }}
+                        >
+                            <button
+                                onClick={() => scroll('right')}
+                                className="p-1.5 rounded-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)] shadow-md hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-secondary)]"
+                            >
+                                <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 {/* 右侧工具栏 */}
                 <div className="flex items-center gap-3">
@@ -480,7 +590,7 @@ export default function TopNav({
                                             style={{ color: 'var(--color-text-tertiary)' }}
                                         >
                                             <Info className="w-4 h-4" />
-                                            关于 Navix
+                                            关于 Nivix
                                         </button>
                                     </div>
                                 </>

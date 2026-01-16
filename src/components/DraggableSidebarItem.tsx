@@ -8,6 +8,7 @@ type Category = {
     id: string;
     name: string;
     icon?: string | null;
+    sitesCount?: number;
 };
 
 interface DraggableSidebarItemProps {
@@ -19,6 +20,7 @@ interface DraggableSidebarItemProps {
     onMove: (dragIndex: number, hoverIndex: number) => void;
     onDragEnd: () => void;
     onClick: () => void;
+    onDoubleClick?: () => void;
     disabled?: boolean;
 }
 
@@ -28,7 +30,7 @@ interface DragItem {
     type: string;
 }
 
-const MENU_ITEM_HEIGHT = 44;
+const MENU_ITEM_HEIGHT = 38;
 
 export function DraggableSidebarItem({
     category,
@@ -39,6 +41,7 @@ export function DraggableSidebarItem({
     onMove,
     onDragEnd,
     onClick,
+    onDoubleClick,
     disabled
 }: DraggableSidebarItemProps) {
     const ref = useRef<HTMLButtonElement>(null);
@@ -96,6 +99,7 @@ export function DraggableSidebarItem({
             ref={ref}
             data-handler-id={handlerId}
             onClick={onClick}
+            onDoubleClick={onDoubleClick}
             title={isCollapsed ? category.name : undefined}
             className="w-full flex items-center rounded-lg text-sm font-medium transition-all duration-200 group"
             style={{
@@ -116,17 +120,25 @@ export function DraggableSidebarItem({
                     color: isActive ? 'var(--color-accent)' : 'var(--color-text-tertiary)'
                 }}
             />
-            {!isCollapsed && (
-                <>
-                    <span className="flex-1 text-left whitespace-nowrap overflow-hidden">{category.name}</span>
-                    {isActive && (
-                        <div
-                            className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0"
-                            style={{ backgroundColor: 'var(--color-accent)' }}
-                        />
-                    )}
-                </>
-            )}
+            <div
+                className="flex items-center flex-1 min-w-0 transition-all duration-300 ease-in-out"
+                style={{
+                    opacity: isCollapsed ? 0 : 1,
+                    maxWidth: isCollapsed ? '0px' : '200px',
+                    marginLeft: isCollapsed ? '0px' : '12px',
+                    overflow: 'hidden'
+                }}
+            >
+                <span className="flex-1 text-left whitespace-nowrap overflow-hidden">{category.name}</span>
+                {category.sitesCount !== undefined && (
+                    <span
+                        className="text-[10px] font-medium opacity-50 group-hover:opacity-100 transition-opacity px-1"
+                        style={{ color: isActive ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }}
+                    >
+                        {category.sitesCount}
+                    </span>
+                )}
+            </div>
         </button>
     );
 }

@@ -15,6 +15,7 @@ import {
     Wrench
 } from 'lucide-react';
 import { DraggableSidebarItem } from './DraggableSidebarItem';
+import { DynamicSlogan } from './DynamicSlogan';
 import { useToast } from './Toast';
 
 // Map distinct icons to known categories for a better look
@@ -39,10 +40,11 @@ type Category = {
     id: string;
     name: string;
     icon?: string | null;
+    sitesCount?: number;
 };
 
 // 统一的菜单项高度
-const MENU_ITEM_HEIGHT = 44; // px
+const MENU_ITEM_HEIGHT = 38; // px
 
 export default function Sidebar({
     categories: externalCategories,
@@ -51,6 +53,7 @@ export default function Sidebar({
     isCollapsed,
     onToggle,
     onCategoriesReorder,
+    onCategoryDoubleClick,
     className = "",
     user // Add user prop
 }: {
@@ -60,6 +63,7 @@ export default function Sidebar({
     isCollapsed: boolean,
     onToggle: () => void,
     onCategoriesReorder?: (categories: Category[]) => void,
+    onCategoryDoubleClick?: (id: string) => void,
     className?: string,
     user?: any // Add user prop type
 }) {
@@ -86,16 +90,6 @@ export default function Sidebar({
 
     const scrollToCategory = (id: string) => {
         onCategoryChange(id);
-        const element = document.getElementById(id);
-        if (element) {
-            const offset = 100; // 增加 offset 以适应顶部导航栏
-            const elementPosition = element.getBoundingClientRect().top;
-            const offsetPosition = elementPosition + window.pageYOffset - offset;
-            window.scrollTo({
-                top: offsetPosition,
-                behavior: "smooth"
-            });
-        }
     };
 
     const handleDragEnd = useCallback((id: string) => {
@@ -106,19 +100,9 @@ export default function Sidebar({
             onCategoriesReorder(currentCategories);
         }
 
-        // 2. 标记为该分类活跃，并在微小的延迟后滚动，确保 DOM 已经更新
-        onCategoryChange(id);
+        // 2. 标记为该分类活跃，父组件会处理滚动
         setTimeout(() => {
-            const element = document.getElementById(id);
-            if (element) {
-                const offset = 100;
-                const elementPosition = element.getBoundingClientRect().top;
-                const offsetPosition = elementPosition + window.pageYOffset - offset;
-                window.scrollTo({
-                    top: offsetPosition,
-                    behavior: "smooth"
-                });
-            }
+            onCategoryChange(id);
         }, 50); // 给 React 一个渲染的时间
     }, [onCategoriesReorder, onCategoryChange]);
 
@@ -197,40 +181,58 @@ export default function Sidebar({
                 className="h-16 flex items-center justify-center flex-shrink-0 transition-all duration-300"
                 style={{ borderBottom: '1px solid var(--sidebar-border)' }}
             >
-                <div className={`flex items-center ${isCollapsed ? '' : 'gap-3 px-6 w-full'}`}>
+                <div
+                    className="flex items-center w-full transition-all duration-300 ease-in-out"
+                    style={{
+                        paddingLeft: isCollapsed ? '20px' : '24px',
+                        paddingRight: isCollapsed ? '20px' : '24px',
+                        justifyContent: isCollapsed ? 'center' : 'flex-start'
+                    }}
+                >
+                    <img
+                        src="/logo.svg"
+                        alt="Nivix Logo"
+                        className="w-8 h-8 rounded-lg flex-shrink-0 transition-all duration-300 logo-light"
+                    />
+                    <img
+                        src="/logo-dark.svg"
+                        alt="Nivix Logo"
+                        className="w-8 h-8 rounded-lg flex-shrink-0 transition-all duration-300 logo-dark"
+                    />
                     <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0 border transition-all duration-300"
+                        className="flex flex-col ml-0 transition-all duration-300 ease-in-out"
                         style={{
-                            background: '#000',
-                            borderColor: 'rgba(255, 255, 255, 0.15)',
-                            color: '#fff'
+                            opacity: isCollapsed ? 0 : 1,
+                            maxWidth: isCollapsed ? '0px' : '200px',
+                            marginLeft: isCollapsed ? '0px' : '12px',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap'
                         }}
                     >
-                        N
-                    </div>
-                    {!isCollapsed && (
-                        <div className={`flex flex-col ml-3 transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 flex-1'}`}>
-                            <div className="flex flex-col">
-                                <span className="font-bold text-base tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Nivix 灵犀书签</span>
-                                <span className="text-xs uppercase tracking-widest opacity-50 font-medium" style={{ color: 'var(--color-text-secondary)' }}>AI 驱动的智能书签</span>
-                            </div>
+                        <div className="flex flex-col">
+                            <span className="font-bold text-base tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Nivix 灵犀书签</span>
+                            <DynamicSlogan />
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
 
             {/* Navigation Menu */}
             <nav className={`flex-1 overflow-y-auto py-4 space-y-1 ${isCollapsed ? 'px-3' : 'px-3'}`}>
-                {!isCollapsed && (
-                    <div
-                        className="text-xs font-semibold px-3 mb-3 uppercase tracking-wider"
-                        style={{ color: 'var(--color-text-tertiary)' }}
-                    >
-                        <span className="text-xs font-bold uppercase tracking-widest px-2" style={{ color: 'var(--color-text-tertiary)' }}>
-                            书签分类
-                        </span> {isSaving && <span className="text-xs">(保存中...)</span>}
-                    </div>
-                )}
+                <div
+                    className="text-xs font-semibold mb-3 uppercase tracking-wider transition-all duration-300 ease-in-out"
+                    style={{
+                        color: 'var(--color-text-tertiary)',
+                        opacity: isCollapsed ? 0 : 1,
+                        maxHeight: isCollapsed ? '0px' : '30px',
+                        overflow: 'hidden',
+                        paddingLeft: isCollapsed ? '0' : '12px'
+                    }}
+                >
+                    <span className="text-xs font-bold uppercase tracking-widest px-2 whitespace-nowrap" style={{ color: 'var(--color-text-tertiary)' }}>
+                        书签分类
+                    </span> {isSaving && <span className="text-xs whitespace-nowrap">(保存中...)</span>}
+                </div>
 
                 {categories.map((cat, index) => {
                     let IconComponent = Monitor;
@@ -265,6 +267,7 @@ export default function Sidebar({
                             onMove={moveCategory}
                             onDragEnd={() => handleDragEnd(cat.id)}
                             onClick={() => scrollToCategory(cat.id)}
+                            onDoubleClick={() => user && onCategoryDoubleClick?.(cat.id)}
                             disabled={!user} // Disable drag if not authenticated
                         />
                     );
@@ -273,12 +276,12 @@ export default function Sidebar({
 
             {/* Footer - Collapse Button */}
             <div
-                className="p-3 flex-shrink-0"
+                className="p-[3px] px-3 flex-shrink-0"
                 style={{ borderTop: '1px solid var(--sidebar-border)' }}
             >
                 <button
                     onClick={onToggle}
-                    title={isCollapsed ? '展开菜单' : '收起菜单'}
+                    title={isCollapsed ? '展开菜单' : '收起书签'}
                     className="w-full flex items-center rounded-lg text-sm font-medium transition-all duration-200 hover:bg-[var(--color-bg-tertiary)]"
                     style={{
                         height: `${MENU_ITEM_HEIGHT}px`,
@@ -291,10 +294,18 @@ export default function Sidebar({
                     {isCollapsed ? (
                         <ChevronRight className="w-5 h-5 flex-shrink-0" />
                     ) : (
-                        <>
-                            <ChevronLeft className="w-5 h-5 flex-shrink-0" />
-                            <span>收起菜单</span>
-                        </>
+                        <div
+                            className="flex items-center transition-all duration-300 ease-in-out"
+                            style={{
+                                opacity: isCollapsed ? 0 : 1,
+                                maxWidth: isCollapsed ? '0px' : '150px',
+                                overflow: 'hidden',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            <ChevronLeft className="w-5 h-5 flex-shrink-0 mr-3" />
+                            <span>收起书签</span>
+                        </div>
                     )}
                 </button>
             </div>

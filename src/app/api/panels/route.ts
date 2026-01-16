@@ -10,10 +10,24 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const panels = await prisma.panel.findMany({
+        const panelsRaw = await prisma.panel.findMany({
             where: { userId: session.user.id },
+            include: {
+                categories: {
+                    include: {
+                        _count: {
+                            select: { sites: true }
+                        }
+                    }
+                }
+            },
             orderBy: { sortOrder: 'asc' },
         });
+
+        const panels = panelsRaw.map(panel => ({
+            ...panel,
+            siteCount: panel.categories.reduce((acc, cat) => acc + cat._count.sites, 0)
+        }));
 
         return NextResponse.json(panels);
     } catch (error) {

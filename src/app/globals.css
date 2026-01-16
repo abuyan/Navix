@@ -71,6 +71,21 @@
   color-scheme: dark;
 }
 
+/* Logo Theme Switch Helpers */
+.logo-light {}
+
+.logo-dark {
+  display: none !important;
+}
+
+.dark .logo-light {
+  display: none !important;
+}
+
+.dark .logo-dark {
+  display: block !important;
+}
+
 /* ========================================
    Base Styles
    ======================================== */
@@ -101,7 +116,9 @@ a:hover {
 html {
   scroll-behavior: smooth;
   background-color: var(--color-bg-primary);
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+  /* Disable global scroll */
   transition: background-color 0.3s ease;
 }
 
@@ -129,6 +146,18 @@ html.dark body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-border-hover);
+}
+
+/* Scrollbar Hide Utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 /* Global Form Focus Styles */
@@ -287,58 +316,83 @@ select:focus {
   }
 }
 
-/* AI Button Rotating Colorful Border Effect */
-@keyframes rotate-border {
-  from {
-    transform: rotate(0deg);
+/* AI Search Border Glow Animation */
+@keyframes gradient-shift {
+
+  0%,
+  100% {
+    filter: hue-rotate(0deg);
   }
 
-  to {
-    transform: rotate(360deg);
+  50% {
+    filter: hue-rotate(180deg);
+  }
+}
+
+@keyframes text-shimmer {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
   }
 }
 
 .btn-ai-active {
   position: relative;
   border: none !important;
-  background-clip: padding-box;
-  overflow: hidden;
-  z-index: 0;
+  background: var(--color-bg-secondary);
+  border-radius: 0.75rem;
 }
 
 .btn-ai-active::before {
   content: '';
   position: absolute;
-  top: -150%;
-  left: -50%;
-  width: 200%;
-  height: 400%;
-  background: conic-gradient(from 0deg,
-      #ef4444 0deg,
-      /* 彗星头部：红亮色 */
-      #f59e0b 5deg,
-      #eab308 15deg,
-      /* 橙黄 */
-      #22c55e 30deg,
-      /* 绿 */
-      #3b82f6 60deg,
-      /* 蓝 */
-      #3b82f6 100deg,
-      /* 蓝色长尾羽 */
-      transparent 120deg,
-      transparent 360deg);
-  animation: rotate-border 1.2s linear infinite;
-  z-index: -2;
+  inset: -1px;
+  background: linear-gradient(135deg,
+      #3b82f6,
+      #8b5cf6,
+      #ec4899,
+      #f59e0b,
+      #eab308,
+      #22c55e,
+      #3b82f6);
+  border-radius: inherit;
+  animation: gradient-shift 2s ease-in-out infinite;
+  z-index: -1;
 }
 
 .btn-ai-active::after {
   content: '';
   position: absolute;
   inset: 1px;
-  background: var(--color-action-bg);
-  border-radius: inherit;
-  z-index: -1;
+  background: var(--color-bg-secondary);
+  border-radius: calc(0.75rem - 2px);
+  z-index: 0;
 }
+
+.btn-ai-active>* {
+  position: relative;
+  z-index: 1;
+}
+
+.btn-ai-active input {
+  background: linear-gradient(90deg,
+      var(--color-text-primary) 0%,
+      var(--color-text-secondary) 25%,
+      var(--color-text-primary) 50%,
+      var(--color-text-secondary) 75%,
+      var(--color-text-primary) 100%);
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: text-shimmer 3s ease-in-out infinite;
+}
+
 
 /* Chrome, Safari, Edge, Opera */
 input::-webkit-outer-spin-button,

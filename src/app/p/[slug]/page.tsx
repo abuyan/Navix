@@ -65,13 +65,27 @@ export default async function PanelPage({ params }: { params: Promise<{ slug: st
     const targetUserId = panel.userId;
 
     // Fetch panels for the top navigation (Siblings of the current panel)
-    const allPanels = await prisma.panel.findMany({
+    const allPanelsRaw = await prisma.panel.findMany({
         where: {
             userId: targetUserId,
             ...((!isOwner) ? { isPublic: true } : {})
         },
+        include: {
+            categories: {
+                include: {
+                    _count: {
+                        select: { sites: true }
+                    }
+                }
+            }
+        },
         orderBy: { sortOrder: 'asc' }
     });
+
+    const allPanels = allPanelsRaw.map(panel => ({
+        ...panel,
+        siteCount: panel.categories.reduce((acc, cat) => acc + cat._count.sites, 0)
+    }));
 
     const categories = await prisma.category.findMany({
         where: {

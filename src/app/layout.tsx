@@ -17,8 +17,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nivix - 灵犀",
+  title: "Nivix 灵犀书签",
   description: "AI 驱动的智能书签，懂收藏，更懂整理。",
+  icons: {
+    icon: [
+      { url: '/logo.svg', media: '(prefers-color-scheme: light)' },
+      { url: '/logo-dark.svg', media: '(prefers-color-scheme: dark)' },
+    ],
+  },
 };
 
 export default async function RootLayout({

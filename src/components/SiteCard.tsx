@@ -1,6 +1,6 @@
 'use client';
 
-import { ExternalLink, Edit, MoreHorizontal, Trash2, Settings, TrendingUp, ChevronRight, Globe } from 'lucide-react';
+import { ExternalLink, Edit, MoreHorizontal, Trash2, Settings, TrendingUp, ChevronRight, Globe, Heart } from 'lucide-react';
 import { Site } from '@prisma/client';
 import { useRef, MouseEvent, useState, useEffect } from 'react';
 import { useToast } from './Toast';
@@ -161,6 +161,34 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete, us
         setIsDeleteConfirmOpen(true);
     };
 
+    const handleTogglePin = async (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const newPinnedState = !site.isPinned;
+        try {
+            // 乐观更新 UI
+            if (onUpdate) {
+                onUpdate({ ...site, isPinned: newPinnedState });
+            }
+
+            const response = await fetch(`/api/sites/${site.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isPinned: newPinnedState }),
+            });
+
+            if (!response.ok) throw new Error('Failed to toggle pin');
+        } catch (error) {
+            console.error('Failed to toggle pin:', error);
+            showToast('操作失败', 'error');
+            // 回退乐观更新
+            if (onUpdate) {
+                onUpdate({ ...site, isPinned: !newPinnedState });
+            }
+        }
+    };
+
     const handleConfirmDelete = async () => {
         try {
             const response = await fetch(`/api/sites/${site.id}`, {
@@ -247,6 +275,17 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete, us
                             transform: 'translateZ(30px)'
                         }}
                     >
+                        <button
+                            onClick={handleTogglePin}
+                            className="p-1 rounded-md transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center justify-center group/pin"
+                            title={site.isPinned ? "取消喜欢" : "标记喜欢"}
+                        >
+                            <Heart
+                                size={14}
+                                className={`transition-colors ${site.isPinned ? 'fill-red-500 text-red-500' : 'text-[var(--color-text-tertiary)] group-hover/pin:text-red-400'}`}
+                            />
+                        </button>
+
                         <button
                             onClick={handleEditClick}
                             className="p-1 rounded-md transition-colors hover:bg-[var(--color-bg-tertiary)] flex items-center justify-center"
@@ -336,41 +375,47 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete, us
                 </a>
             </div>
 
-            {/* Tooltip 悬浮提示 - 黑底白字跳转地址（移动到下方，箭头向上） */}
+            {/* Tooltip 悬浮提示 - 黑底白字跳转地址（分离居中逻辑与动画逻辑以防闪跳） */}
             {isHovered && (
                 <div
-                    className="absolute z-[60] px-3 py-1.5 rounded-lg shadow-xl pointer-events-none break-all text-center"
+                    className="absolute z-[60] pointer-events-none"
                     style={{
                         top: 'calc(100% + 12px)',
                         left: '50%',
                         transform: 'translateX(-50%)',
                         width: 'max-content',
                         maxWidth: 'min(400px, 80vw)',
-                        backgroundColor: 'var(--color-tooltip-bg)',
-                        border: '1px solid var(--color-tooltip-border)',
-                        color: 'var(--color-tooltip-text)',
-                        fontSize: '11px',
-                        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-                        animation: 'fadeIn 0.2s ease-out'
                     }}
                 >
-                    {site.description || site.url}
-                    {/* 小箭头 - 指向上方 */}
                     <div
-                        className="absolute"
+                        className="px-3 py-1.5 rounded-lg shadow-xl break-all text-center relative"
                         style={{
-                            top: '-4px',
-                            left: '50%',
-                            marginLeft: '-4px',
-                            width: '8px',
-                            height: '8px',
                             backgroundColor: 'var(--color-tooltip-bg)',
-                            borderLeft: '1px solid var(--color-tooltip-border)',
-                            borderTop: '1px solid var(--color-tooltip-border)',
-                            transform: 'rotate(45deg)'
+                            border: '1px solid var(--color-tooltip-border)',
+                            color: 'var(--color-tooltip-text)',
+                            fontSize: '11px',
+                            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                            animation: 'fadeIn 0.2s ease-out'
                         }}
-                    />
+                    >
+                        {site.description || site.url}
+                        {/* 小箭头 - 指向上方 */}
+                        <div
+                            className="absolute"
+                            style={{
+                                top: '-4px',
+                                left: '50%',
+                                marginLeft: '-4px',
+                                width: '8px',
+                                height: '8px',
+                                backgroundColor: 'var(--color-tooltip-bg)',
+                                borderLeft: '1px solid var(--color-tooltip-border)',
+                                borderTop: '1px solid var(--color-tooltip-border)',
+                                transform: 'rotate(45deg)'
+                            }}
+                        />
+                    </div>
                 </div>
             )}
 

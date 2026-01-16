@@ -8,6 +8,9 @@ interface BatchAIContextType {
     isBatchAnalyzing: boolean;
     batchProgress: string;
     startBatchAnalysis: (sites: Site[]) => Promise<void>;
+    startBatchCategorization: (sites: Site[], categories: { id: string, name: string }[]) => Promise<void>;
+    startBatchIconGeneration: (categories: { id: string, name: string }[]) => Promise<void>;
+    stopBatchAnalysis: () => void;
     subscribe: (callback: (updatedSite: any) => void) => () => void;
 }
 
@@ -38,7 +41,7 @@ export function BatchAIProvider({ children }: { children: React.ReactNode }) {
         const pendingSites = sites.filter(site => !site.aiAnalyzed);
 
         if (pendingSites.length === 0) {
-            setBatchProgress('没有需要整理的网页');
+            setBatchProgress('无需整理');
             setTimeout(() => setBatchProgress(''), 3000);
             return;
         }
@@ -55,7 +58,7 @@ export function BatchAIProvider({ children }: { children: React.ReactNode }) {
                 if (shouldStopRef.current) break;
 
                 const site = pendingSites[i];
-                setBatchProgress(`${i + 1}/${pendingSites.length}`);
+                setBatchProgress(`正在整理: ${site.title}`);
 
                 try {
                     // 1. AI Extract
@@ -132,8 +135,202 @@ export function BatchAIProvider({ children }: { children: React.ReactNode }) {
         }
     }, [isBatchAnalyzing, notifyListeners]);
 
+    const startBatchCategorization = useCallback(async (sites: Site[], categories: { id: string, name: string }[]) => {
+        if (isBatchAnalyzing) return;
+
+        if (sites.length === 0) {
+            showToast('没有可整理的书签', 'info');
+            return;
+        }
+
+        setIsBatchAnalyzing(true);
+        shouldStopRef.current = false;
+        setBatchProgress(`正在分析 ${sites.length} 个书签...`);
+
+        try {
+            const response = await fetch('/api/ai/categorize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sites: sites.map(s => ({ id: s.id, title: s.title, description: s.description })),
+                    categories
+                })
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'AI 请求失败');
+            }
+
+            if (!response.body) throw new Error('No response body');
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let processedCount = 0;
+
+            while (true) {
+                if (shouldStopRef.current) break;
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    // 清理 Markdown 代码块标记，增强容错
+                    const cleanLine = line.replace(/```json/g, '').replace(/```/g, '').trim();
+                    if (cleanLine) {
+                        try {
+                            const result = JSON.parse(cleanLine);
+                            if (result.siteId && result.categoryId) {
+                                const site = sites.find(s => s.id === result.siteId);
+                                if (site) {
+                                    setBatchProgress(`正在整理: ${site.title}`);
+
+                                    // Robust ID Resolution: Check if AI returned a name instead of ID
+                                    let targetCategoryId = result.categoryId;
+                                    const categoryByName = categories.find(c => c.name === result.categoryId);
+                                    if (categoryByName) {
+                                        targetCategoryId = categoryByName.id;
+                                    }
+
+                                    if (site.categoryId !== targetCategoryId) {
+                                        await fetch(`/api/sites/${result.siteId}`, {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ categoryId: targetCategoryId })
+                                        });
+
+                                        notifyListeners({ id: result.siteId, categoryId: targetCategoryId });
+                                        processedCount++;
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            // ignore parse error
+                        }
+                    }
+                }
+            }
+
+            if (buffer.trim()) {
+                const cleanLine = buffer.replace(/```json/g, '').replace(/```/g, '').trim();
+                try {
+                    const result = JSON.parse(cleanLine);
+                    if (result.siteId && result.categoryId) {
+                        const site = sites.find(s => s.id === result.siteId);
+                        if (site) {
+                            setBatchProgress(`正在整理: ${site.title}`);
+
+                            // Robust ID Resolution
+                            let targetCategoryId = result.categoryId;
+                            const categoryByName = categories.find(c => c.name === result.categoryId);
+                            if (categoryByName) {
+                                targetCategoryId = categoryByName.id;
+                            }
+
+                            if (site.categoryId !== targetCategoryId) {
+                                await fetch(`/api/sites/${result.siteId}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ categoryId: targetCategoryId })
+                                });
+                                notifyListeners({ id: result.siteId, categoryId: targetCategoryId });
+                                processedCount++;
+                            }
+                        }
+                    }
+                } catch (e) { }
+            }
+
+            if (processedCount > 0) {
+                showToast(`成功整理了 ${processedCount} 个书签`, 'success');
+            } else {
+                showToast('书签分类已是最佳状态', 'success');
+            }
+
+        } catch (error) {
+            console.error('Batch Categorize error:', error);
+            showToast('AI 整理失败', 'error');
+        } finally {
+            setIsBatchAnalyzing(false);
+            setBatchProgress('');
+        }
+    }, [isBatchAnalyzing, notifyListeners, showToast]);
+
+    const startBatchIconGeneration = useCallback(async (categories: { id: string, name: string }[]) => {
+        if (isBatchAnalyzing) return;
+        if (categories.length === 0) return;
+
+        setIsBatchAnalyzing(true);
+        shouldStopRef.current = false;
+        setBatchProgress('正在生成分类图标...');
+
+        try {
+            // 1. Call AI to get icons
+            const response = await fetch('/api/ai/icon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ categories: categories.map(c => c.name) })
+            });
+
+            if (!response.ok) throw new Error('AI request failed');
+            const { icons } = await response.json();
+
+            // 2. Update categories one by one to show progress
+            let processedCount = 0;
+            const categoryUpdates: any[] = [];
+
+            for (let i = 0; i < categories.length; i++) {
+                if (shouldStopRef.current) break;
+                const cat = categories[i];
+                const newIcon = icons[cat.name];
+
+                if (newIcon) {
+                    setBatchProgress(`更新图标: ${cat.name}`);
+                    try {
+                        await fetch(`/api/categories/${cat.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ icon: newIcon })
+                        });
+                        categoryUpdates.push({ id: cat.id, icon: newIcon });
+                        processedCount++;
+                        // Notify listeners (we need to adapt ClientWrapper to listen to 'category_update')
+                        // For now, we will reuse the listener mechanism but pass a special object or use a new event
+                        // But since ClientWrapper only listens for site updates, we might need a page refresh or new listener
+                    } catch (e) {
+                        console.error('Failed to update category icon', e);
+                    }
+                }
+            }
+
+            if (processedCount > 0) {
+                showToast(`已更新 ${processedCount} 个分类图标`, 'success');
+                // Force reload to see changes as we don't have category state sync yet
+                window.location.reload();
+            }
+
+        } catch (error) {
+            console.error('Icon generation error:', error);
+            showToast('生成图标失败', 'error');
+        } finally {
+            setIsBatchAnalyzing(false);
+            setBatchProgress('');
+        }
+    }, [isBatchAnalyzing, showToast]);
+
+    const stopBatchAnalysis = useCallback(() => {
+        shouldStopRef.current = true;
+        setIsBatchAnalyzing(false);
+        setBatchProgress('');
+        showToast('任务已终止', 'info');
+    }, [showToast]);
+
     return (
-        <BatchAIContext.Provider value={{ isBatchAnalyzing, batchProgress, startBatchAnalysis, subscribe }}>
+        <BatchAIContext.Provider value={{ isBatchAnalyzing, batchProgress, startBatchAnalysis, startBatchCategorization, startBatchIconGeneration, stopBatchAnalysis, subscribe }}>
             {children}
         </BatchAIContext.Provider>
     );
@@ -146,3 +343,4 @@ export function useBatchAI() {
     }
     return context;
 }
+

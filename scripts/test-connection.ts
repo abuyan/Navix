@@ -1,7 +1,6 @@
-const { Client } = require('@notionhq/client');
-const OpenAI = require('openai');
-const dotenv = require('dotenv');
-const path = require('path');
+import OpenAI from 'openai';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 
 // 加载 .env.local 环境变量
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -28,47 +27,8 @@ async function main() {
   }
 
   console.log('\n-------------------\n');
-
-  // 2. 测试 Notion 连接
-  console.log('Testing Notion API...');
-  try {
-    const notion = new Client({ auth: process.env.NOTION_TOKEN });
-    const databaseId = process.env.NOTION_DATABASE_ID;
-
-    // --- DEBUG START ---
-    console.log('DEBUG: notion keys:', Object.keys(notion));
-    if (notion.databases) {
-       console.log('DEBUG: notion.databases keys:', Object.keys(notion.databases));
-       console.log('DEBUG: Type of query:', typeof notion.databases.query);
-    } else {
-       console.log('DEBUG: notion.databases is UNDEFINED');
-    }
-    // --- DEBUG END ---
-
-    if (!databaseId) {
-      throw new Error('Notion Database ID is missing in .env.local');
-    }
-
-    const response = await notion.databases.query({
-      database_id: databaseId,
-      page_size: 1, 
-    });
-
-    console.log(`✅ Notion 连接成功!`);
-    console.log(`   - 数据库中共有 ${response.results.length} 条数据`);
-    
-    if (response.results.length > 0) {
-      const page = response.results[0];
-      console.log(`   - 第一条数据的 ID: ${page.id}`);
-    } else {
-      console.log('   - 警告: 数据库是空的 (这很正常，只要没报错就行)');
-    }
-
-  } catch (error) {
-    console.error('❌ Notion 连接失败:', error instanceof Error ? error.message : error);
-    // 打印更详细的错误堆栈
-    if (error instanceof Error && error.stack) console.error(error.stack);
-  }
 }
 
 main();
+
+export { };

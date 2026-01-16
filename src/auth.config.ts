@@ -25,8 +25,10 @@ export const authConfig = {
                 token.username = user.username;
             }
             // Support updating session client-side
-            if (trigger === "update" && session?.username) {
-                token.username = session.username;
+            if (trigger === "update") {
+                if (session?.username) token.username = session.username;
+                if (session?.name) token.name = session.name;
+                if (session?.image) token.picture = session.image;
             }
             return token;
         },
@@ -37,6 +39,9 @@ export const authConfig = {
             if (session.user && token.username) {
                 // @ts-ignore
                 session.user.username = token.username;
+            }
+            if (session.user && token.picture) {
+                session.user.image = token.picture;
             }
             return session;
         },
