@@ -3,7 +3,7 @@ import ClientWrapper from '@/components/ClientWrapper';
 import { notFound } from 'next/navigation';
 import { auth, signOut } from '@/auth';
 
-export const revalidate = 60;
+export const revalidate = 3600;
 
 export default async function PanelPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;

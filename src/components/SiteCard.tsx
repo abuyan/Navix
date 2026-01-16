@@ -332,6 +332,7 @@ export default function SiteCard({ site, categories = [], onUpdate, onDelete, us
                                     src={iconUrl}
                                     alt={site.title}
                                     className="w-full h-full object-contain"
+                                    loading="lazy"
                                     onError={handleIconError}
                                     onLoad={handleIconLoad}
                                 />
