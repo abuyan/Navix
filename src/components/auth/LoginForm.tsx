@@ -57,8 +57,7 @@ export default function LoginForm() {
                     id="email"
                     type="email"
                     name="email"
-                    placeholder="admin@nivix.com"
-                    defaultValue="admin@nivix.com"
+                    placeholder="your@email.com"
                     required
                 />
             </div>
@@ -80,7 +79,6 @@ export default function LoginForm() {
                     id="password"
                     type="password"
                     name="password"
-                    defaultValue="admin123"
                     required
                     minLength={6}
                 />

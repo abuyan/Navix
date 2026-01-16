@@ -5,10 +5,10 @@ const prisma = new PrismaClient()
 async function main() {
     const updateUser = await prisma.user.updateMany({
         where: {
-            email: 'admin@navix.com'
+            email: 'admin@nivix.site'
         },
         data: {
-            email: 'admin@nivix.com'
+            email: 'admin@nivix.site'
         }
     })
     console.log(`Updated ${updateUser.count} user(s).`)

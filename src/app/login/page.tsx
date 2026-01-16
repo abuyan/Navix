@@ -24,13 +24,13 @@ export default function LoginPage() {
                         className="text-2xl font-bold mb-2"
                         style={{ color: 'var(--color-text-primary)' }}
                     >
-                        Nivix
+                        Nivix 灵犀书签
                     </h1>
                     <p
                         className="text-sm"
                         style={{ color: 'var(--color-text-secondary)' }}
                     >
-                        请登录以管理导航内容
+                        欢迎登录灵犀书签
                     </p>
                 </div>
                 <LoginForm />
