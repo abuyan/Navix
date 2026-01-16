@@ -945,14 +945,14 @@ function SettingsContent() {
                                     </div>
                                     <div className="p-6 space-y-4">
                                         <div className="flex items-center gap-4">
-                                            <div
-                                                className="w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-2xl"
-                                                style={{ background: '#000' }}
-                                            >
-                                                N
+                                            <div className="w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden">
+                                                <img src="/logo.svg" alt="Nivix" className="w-full h-full object-cover dark:hidden" />
+                                                <img src="/logo-dark.svg" alt="Nivix" className="w-full h-full object-cover hidden dark:block" />
                                             </div>
                                             <div>
-                                                <h3 className="text-xl font-bold">Nivix 灵犀书签</h3>
+                                                <h3 className="text-xl font-bold flex items-center gap-2">
+                                                    Nivix 灵犀书签
+                                                </h3>
                                                 <p className="text-sm text-[var(--color-text-secondary)]">AI 驱动的智能书签管理工具</p>
                                             </div>
                                         </div>
@@ -960,7 +960,7 @@ function SettingsContent() {
                                         <div className="pt-4 border-t border-[var(--color-border)] space-y-3">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-[var(--color-text-secondary)]">版本</span>
-                                                <span>1.0.0</span>
+                                                <span className="font-mono">0.10.1</span>
                                             </div>
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-[var(--color-text-secondary)]">开发者</span>
@@ -968,8 +968,10 @@ function SettingsContent() {
                                             </div>
                                         </div>
 
-                                        <p className="text-sm text-[var(--color-text-secondary)] pt-4 border-t border-[var(--color-border)]">
+                                        <p className="text-sm text-[var(--color-text-secondary)] pt-4 border-t border-[var(--color-border)] leading-relaxed">
                                             Nivix 是一款基于 AI 技术的智能书签管理工具，帮助您更高效地收藏、整理和发现优质网站。
+                                            <br /><br />
+                                            "心有灵犀，藏而有序"。Nivix 不仅仅是一个书签夹，更是您的智能第二大脑。通过 AI 自动分类、智能图标匹配和语义搜索，让每一次收藏都井井有条，每一次查找都得心应手。
                                         </p>
                                     </div>
                                 </section>
