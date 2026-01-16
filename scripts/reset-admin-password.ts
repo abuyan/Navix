@@ -5,20 +5,15 @@ import 'dotenv/config'
 const prisma = new PrismaClient()
 
 async function main() {
-    const email = 'admin@nivix.com'
+    const email = 'admin@nivix.site'
     const newPassword = 'admin123' // You can change this if needed
     const hashedPassword = await bcrypt.hash(newPassword, 10)
 
-    console.log(`Resetting password for ${email}...`)
+    console.log(`Updating administrator (username: admin) to ${email}...`)
 
-    const user = await prisma.user.upsert({
-        where: { email },
-        update: {
-            password: hashedPassword,
-        },
-        create: {
-            name: 'Admin',
-            username: 'admin',
+    const user = await prisma.user.update({
+        where: { username: 'admin' },
+        data: {
             email: email,
             password: hashedPassword,
         }
