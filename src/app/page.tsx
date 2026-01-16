@@ -2,9 +2,9 @@ import { prisma } from '@/lib/prisma';
 import ClientWrapper from '@/components/ClientWrapper';
 import { auth } from '@/auth';
 
-// Use ISR (Incremental Static Regeneration) - revalidate every 60 seconds
-// This caches the page but still shows updated data within 60s
-// export const revalidate = 60;
+// Use ISR (Incremental Static Regeneration) - revalidate every 3600 seconds (1 hour)
+// This makes the page load instantly for visitors from cache
+export const revalidate = 3600;
 
 export default async function Home() {
   const session = await auth();
